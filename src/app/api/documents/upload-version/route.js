@@ -1,239 +1,117 @@
+import formidable from "formidable";
 import { NextResponse } from "next/server";
-import { connectDB } from "../../../../lib/database";
-import { emailService } from "../../../../lib/emailService";
-import { googleDriveService } from "../../../../lib/googleDrive";
-import { Document } from "../../../../models/Document";
-import { Folder } from "../../../../models/Folder";
-import { User } from "../../../../models/User";
+import { requireAuth } from "../../../../lib/auth.js";
+import { firebaseUploadService } from "../../../../lib/firebaseUpload.js";
+import { DocumentService } from "../../../../lib/firestore.js";
 
-export async function POST(request) {
-  try {
-    await connectDB();
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
-    const formData = await request.formData();
-    const file = formData.get("file");
-    const documentId = formData.get("documentId");
-    const userId = formData.get("userId");
-
-    if (!file || !documentId || !userId) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    // Get the original document
-    const originalDocument = await Document.findById(documentId);
-    if (!originalDocument) {
-      return NextResponse.json(
-        { error: "Original document not found" },
-        { status: 404 }
-      );
-    }
-
-    // Get user info
-    const user = await User.findById(userId);
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Get folder info for Google Drive upload
-    const folder = await Folder.findById(originalDocument.folderId);
-    if (!folder) {
-      return NextResponse.json({ error: "Folder not found" }, { status: 404 });
-    }
-
-    // Validate file type
-    const allowedTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-powerpoint",
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "text/plain",
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: `File type ${file.type} is not allowed` },
-        { status: 400 }
-      );
-    }
-
-    // Convert file to buffer
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Upload to Google Drive
-    const googleDriveResponse = await googleDriveService.uploadFile(
-      buffer,
-      file.name,
-      file.type,
-      folder.googleDriveFolderId
-    );
-
-    // Get the latest version number - look for documents with the same parent or the original document
-    const latestVersion = await Document.findOne({
-      $or: [
-        { _id: documentId },
-        { parentDocumentId: originalDocument.parentDocumentId || documentId },
-      ],
-    }).sort({ version: -1 });
-
-    const newVersionNumber = (latestVersion?.version || 0) + 1;
-
-    // Create new version document
-    const newVersion = new Document({
-      name: originalDocument.name,
-      originalName: file.name,
-      mimeType: file.type,
-      size: file.size,
-      folderId: originalDocument.folderId,
-      googleDriveId: googleDriveResponse.fileId,
-      googleDriveUrl: googleDriveResponse.webViewLink,
-      content: originalDocument.content,
-      tags: originalDocument.tags,
-      uploadedBy: {
-        userId: user._id,
-        name: user.name,
-        email: user.email,
-      },
-      version: newVersionNumber,
-      isLatestVersion: true,
-      isActive: true,
-      parentDocumentId:
-        originalDocument.parentDocumentId || originalDocument._id,
-      versionHistory: [],
-    });
-
-    await newVersion.save();
-
-    // Update all previous versions to not be the latest (excluding the new version)
-    await Document.updateMany(
-      {
-        $or: [
-          { _id: documentId },
-          { parentDocumentId: originalDocument.parentDocumentId || documentId },
-        ],
-        _id: { $ne: newVersion._id }, // Exclude the new version from being set to false
-      },
-      { isLatestVersion: false }
-    );
-
-    // Update version history for all related documents
-    const versionHistoryEntry = {
-      version: newVersionNumber,
-      documentId: newVersion._id,
-      uploadedAt: new Date(),
-      uploadedBy: {
-        userId: user._id,
-        name: user.name,
-        email: user.email,
-      },
-    };
-
-    await Document.updateMany(
-      {
-        $or: [
-          { _id: documentId },
-          { parentDocumentId: originalDocument.parentDocumentId || documentId },
-        ],
-      },
-      { $push: { versionHistory: versionHistoryEntry } }
-    );
-
-    // Also add to the new version's history
-    await Document.findByIdAndUpdate(newVersion._id, {
-      $push: { versionHistory: versionHistoryEntry },
-    });
-
-    // Send email notifications to document creators and collaborators
+// POST - Upload new version of document
+async function POST(request) {
+  return requireAuth(async (request) => {
     try {
-      // Get all users who have interacted with this document (creators and uploaders)
-      const allVersions = await Document.find({
-        $or: [
-          { _id: documentId },
-          { parentDocumentId: originalDocument.parentDocumentId || documentId },
-        ],
-      }).populate("uploadedBy.userId", "name email");
+      const form = formidable({
+        maxFileSize: 50 * 1024 * 1024, // 50MB limit
+        allowEmptyFiles: false,
+        filter: ({ mimetype }) => {
+          return (
+            (mimetype && mimetype.includes("application/")) ||
+            (mimetype && mimetype.includes("text/")) ||
+            (mimetype && mimetype.includes("image/")) ||
+            (mimetype && mimetype.includes("audio/")) ||
+            (mimetype && mimetype.includes("video/"))
+          );
+        },
+      });
 
-      // Create a set of unique users to notify
-      const usersToNotify = new Set();
+      const [fields, files] = await form.parse(request);
 
-      // Add the original document creator
-      if (originalDocument.uploadedBy?.email) {
-        usersToNotify.add({
-          email: originalDocument.uploadedBy.email,
-          name: originalDocument.uploadedBy.name || "User",
-        });
+      if (!files.file || files.file.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "No file uploaded" },
+          { status: 400 }
+        );
       }
 
-      // Add all version uploaders
-      allVersions.forEach((version) => {
-        if (
-          version.uploadedBy?.email &&
-          version.uploadedBy.email !== user.email
-        ) {
-          usersToNotify.add({
-            email: version.uploadedBy.email,
-            name: version.uploadedBy.name || "User",
-          });
-        }
+      const file = files.file[0];
+      const parentDocumentId = fields.parentDocumentId?.[0];
+      const description = fields.description?.[0] || "";
+
+      if (!parentDocumentId) {
+        return NextResponse.json(
+          { success: false, error: "Parent document ID is required" },
+          { status: 400 }
+        );
+      }
+
+      // Get the parent document
+      const parentDocument = await DocumentService.getDocumentById(
+        parentDocumentId
+      );
+      if (!parentDocument) {
+        return NextResponse.json(
+          { success: false, error: "Parent document not found" },
+          { status: 404 }
+        );
+      }
+
+      // Read file buffer
+      const fileBuffer = await file.toBuffer();
+
+      // Upload to Firebase Storage
+      const uploadResult = await firebaseUploadService.uploadFile(
+        fileBuffer,
+        file.originalFilename,
+        file.mimetype,
+        parentDocument.folderId
+          ? `folders/${parentDocument.folderId}/documents`
+          : "documents"
+      );
+
+      // Create new version document
+      const newVersionData = {
+        name: file.originalFilename,
+        originalName: file.originalFilename,
+        mimeType: file.mimetype,
+        size: file.size,
+        folderId: parentDocument.folderId,
+        firebaseStorageUrl: uploadResult.downloadURL,
+        firebaseStoragePath: uploadResult.storagePath,
+        content: description,
+        tags: parentDocument.tags || [],
+        createdBy: request.user.userId,
+        createdByEmail: request.user.email,
+        createdByName: request.user.name,
+        version: (parentDocument.version || 1) + 1,
+        isLatestVersion: true,
+        isActive: true,
+        parentDocumentId: parentDocumentId,
+      };
+
+      const newVersion = await DocumentService.createDocument(newVersionData);
+
+      // Update parent document to not be the latest version
+      await DocumentService.updateDocument(parentDocumentId, {
+        isLatestVersion: false,
       });
 
-      // Send email notifications
-      const emailPromises = Array.from(usersToNotify).map(async (recipient) => {
-        try {
-          await emailService.sendVersionUpdateNotification({
-            documentName: originalDocument.name,
-            originalName: originalDocument.originalName,
-            versionNumber: newVersionNumber,
-            uploadedBy: {
-              name: user.name,
-              email: user.email,
-            },
-            recipientEmail: recipient.email,
-            recipientName: recipient.name,
-            documentUrl: newVersion.googleDriveUrl,
-            changeType: "version_upload",
-          });
-        } catch (emailError) {
-          console.error(
-            `Failed to send email to ${recipient.email}:`,
-            emailError
-          );
-        }
+      return NextResponse.json({
+        success: true,
+        data: newVersion,
+        message: "Document version uploaded successfully",
       });
-
-      // Wait for all emails to be sent (but don't block the response)
-      Promise.all(emailPromises).catch((error) => {
-        console.error("Some email notifications failed:", error);
-      });
-    } catch (emailError) {
-      console.error("Email notification setup failed:", emailError);
-      // Don't fail the upload if email fails
+    } catch (error) {
+      console.error("Upload version error:", error);
+      return NextResponse.json(
+        { success: false, error: "Upload failed" },
+        { status: 500 }
+      );
     }
-
-    return NextResponse.json({
-      success: true,
-      message: `Version ${newVersionNumber} uploaded successfully`,
-      document: {
-        id: newVersion._id,
-        name: newVersion.name,
-        version: newVersion.version,
-        googleDriveUrl: newVersion.googleDriveUrl,
-      },
-    });
-  } catch (error) {
-    console.error("Upload version error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
-  }
+  })(request);
 }
+
+export { POST };

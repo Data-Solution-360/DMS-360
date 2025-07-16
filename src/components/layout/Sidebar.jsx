@@ -25,18 +25,18 @@ const Sidebar = ({ isOpen = true, onToggle }) => {
 
   const renderFolderTree = (folders, level = 0) => {
     return folders.map((folder) => (
-      <div key={folder._id}>
+      <div key={folder.id}>
         <div
           className={`flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 ${
             level > 0 ? "ml-" + level * 4 : ""
           }`}
-          onClick={() => toggleFolder(folder._id)}
+          onClick={() => toggleFolder(folder.id)}
         >
           <div className="flex items-center flex-1">
             {folder.children && folder.children.length > 0 && (
               <svg
                 className={`w-4 h-4 mr-2 transition-transform ${
-                  expandedFolders.has(folder._id) ? "rotate-90" : ""
+                  expandedFolders.has(folder.id) ? "rotate-90" : ""
                 }`}
                 fill="none"
                 stroke="currentColor"
@@ -55,7 +55,7 @@ const Sidebar = ({ isOpen = true, onToggle }) => {
           </div>
         </div>
 
-        {expandedFolders.has(folder._id) && folder.children && (
+        {expandedFolders.has(folder.id) && folder.children && (
           <div className="ml-4">
             {renderFolderTree(folder.children, level + 1)}
           </div>

@@ -11,7 +11,7 @@ export default function PricingSection() {
         "Up to 5 team members",
         "10GB storage",
         "Basic search & filters",
-        "Google Drive integration",
+        "Cloud integration",
         "Email support",
         "Basic analytics",
       ],

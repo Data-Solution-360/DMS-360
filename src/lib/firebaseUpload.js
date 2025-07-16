@@ -1,110 +1,173 @@
-import {
-  getDownloadURL,
-  listAll,
-  ref,
-  uploadBytesResumable,
-} from "firebase/storage";
-import { storage } from "./firebase";
+import { adminStorage } from "./firebase-admin.js";
 
-export function uploadFileToFirebase(file, path, onProgress) {
-  return new Promise((resolve, reject) => {
-    const storageRef = ref(storage, path);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+class FirebaseUploadService {
+  constructor() {
+    this.storage = adminStorage;
+  }
 
-    console.log("[Firebase] Starting upload:", file.name, "to", path);
+  /**
+   * Upload a file to Firebase Storage
+   * @param {Buffer} fileBuffer - File buffer
+   * @param {string} fileName - Original file name
+   * @param {string} mimeType - File MIME type
+   * @param {string} folderPath - Folder path in storage
+   * @returns {Promise<{fileId: string, downloadURL: string, storagePath: string}>}
+   */
+  async uploadFile(fileBuffer, fileName, mimeType, folderPath = "documents") {
+    try {
+      // Create a unique file name to avoid conflicts
+      const timestamp = Date.now();
+      const uniqueFileName = `${timestamp}-${fileName}`;
+      const storagePath = `${folderPath}/${uniqueFileName}`;
 
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        const progress = Math.round(
-          (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-        );
-        if (onProgress) onProgress(progress);
-        console.log(`[Firebase] Upload progress: ${progress}%`);
-      },
-      (error) => {
-        console.error("[Firebase] Upload error:", error);
-        reject(error);
-      },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref)
-          .then((downloadURL) => {
-            console.log(
-              "[Firebase] Upload complete. Download URL:",
-              downloadURL
-            );
-            resolve(downloadURL);
-          })
-          .catch((err) => {
-            console.error("[Firebase] Error getting download URL:", err);
-            reject(err);
-          });
-      }
-    );
-  });
-}
+      // Get the bucket
+      const bucket = this.storage.bucket();
 
-// Test function to check Firebase Storage connection
-export async function testFirebaseStorageConnection() {
-  try {
-    console.log("[Firebase] Testing storage connection...");
-    console.log(
-      "[Firebase] Storage bucket:",
-      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    );
+      // Create a file reference
+      const file = bucket.file(storagePath);
 
-    const rootRef = ref(storage);
-    console.log("[Firebase] Root reference created:", rootRef);
+      // Upload the file
+      const stream = file.createWriteStream({
+        metadata: {
+          contentType: mimeType,
+        },
+        resumable: false,
+      });
 
-    const result = await listAll(rootRef);
-    console.log(
-      "[Firebase] Storage connection successful. Root items:",
-      result.items
-    );
-    return true;
-  } catch (err) {
-    console.error("[Firebase] Storage connection failed:", err);
-    console.error("[Firebase] Error code:", err.code);
-    console.error("[Firebase] Error message:", err.message);
+      return new Promise((resolve, reject) => {
+        stream.on("error", (error) => {
+          console.error("Firebase upload error:", error);
+          reject(new Error(`Failed to upload file: ${error.message}`));
+        });
 
-    // Check if it's a configuration issue
-    if (err.code === "storage/unauthorized") {
-      console.error("[Firebase] Unauthorized - check Storage rules");
-    } else if (err.code === "storage/retry-limit-exceeded") {
-      console.error(
-        "[Firebase] Retry limit exceeded - check bucket name and network"
-      );
+        stream.on("finish", async () => {
+          try {
+            // Make the file public and get download URL
+            await file.makePublic();
+            const downloadURL = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+
+            resolve({
+              fileId: uniqueFileName,
+              downloadURL: downloadURL,
+              storagePath: storagePath,
+            });
+          } catch (error) {
+            console.error("Error getting download URL:", error);
+            reject(new Error(`Failed to get download URL: ${error.message}`));
+          }
+        });
+
+        stream.end(fileBuffer);
+      });
+    } catch (error) {
+      console.error("Firebase upload error:", error);
+      throw new Error(`Failed to upload file: ${error.message}`);
     }
+  }
 
-    return false;
+  /**
+   * Delete a file from Firebase Storage
+   * @param {string} storagePath - Storage path of the file
+   * @returns {Promise<void>}
+   */
+  async deleteFile(storagePath) {
+    try {
+      const bucket = this.storage.bucket();
+      const file = bucket.file(storagePath);
+      await file.delete();
+    } catch (error) {
+      console.error("Firebase delete error:", error);
+      throw new Error(`Failed to delete file: ${error.message}`);
+    }
+  }
+
+  /**
+   * Copy a file in Firebase Storage (creates a new file)
+   * @param {string} sourcePath - Source file path
+   * @param {string} destinationPath - Destination file path
+   * @returns {Promise<{fileId: string, downloadURL: string, storagePath: string}>}
+   */
+  async copyFile(sourcePath, destinationPath) {
+    try {
+      const bucket = this.storage.bucket();
+      const sourceFile = bucket.file(sourcePath);
+      const destinationFile = bucket.file(destinationPath);
+
+      // Copy the file
+      await sourceFile.copy(destinationFile);
+
+      // Make the new file public and get download URL
+      await destinationFile.makePublic();
+      const downloadURL = `https://storage.googleapis.com/${bucket.name}/${destinationPath}`;
+
+      return {
+        fileId: destinationFile.name,
+        downloadURL: downloadURL,
+        storagePath: destinationPath,
+      };
+    } catch (error) {
+      console.error("Firebase copy error:", error);
+      throw new Error(`Failed to copy file: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get download URL for a file
+   * @param {string} storagePath - Storage path of the file
+   * @returns {Promise<string>}
+   */
+  async getDownloadURL(storagePath) {
+    try {
+      const bucket = this.storage.bucket();
+      const file = bucket.file(storagePath);
+
+      // Check if file exists
+      const [exists] = await file.exists();
+      if (!exists) {
+        throw new Error("File not found");
+      }
+
+      // Return public URL
+      return `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    } catch (error) {
+      console.error("Firebase get download URL error:", error);
+      throw new Error(`Failed to get download URL: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get file metadata
+   * @param {string} storagePath - Storage path of the file
+   * @returns {Promise<object>}
+   */
+  async getFileMetadata(storagePath) {
+    try {
+      const bucket = this.storage.bucket();
+      const file = bucket.file(storagePath);
+      const [metadata] = await file.getMetadata();
+      return metadata;
+    } catch (error) {
+      console.error("Firebase get metadata error:", error);
+      throw new Error(`Failed to get file metadata: ${error.message}`);
+    }
+  }
+
+  /**
+   * Check if file exists
+   * @param {string} storagePath - Storage path of the file
+   * @returns {Promise<boolean>}
+   */
+  async fileExists(storagePath) {
+    try {
+      const bucket = this.storage.bucket();
+      const file = bucket.file(storagePath);
+      const [exists] = await file.exists();
+      return exists;
+    } catch (error) {
+      console.error("Firebase file exists check error:", error);
+      return false;
+    }
   }
 }
 
-// Alternative test - try uploading a small test file
-export async function testFirebaseUpload() {
-  try {
-    console.log("[Firebase] Testing upload...");
-
-    // Create a simple test file
-    const testContent = "Hello Firebase Storage!";
-    const testFile = new Blob([testContent], { type: "text/plain" });
-
-    const testPath = `test-${Date.now()}.txt`;
-    const testRef = ref(storage, testPath);
-
-    console.log("[Firebase] Uploading test file:", testPath);
-
-    const snapshot = await uploadBytesResumable(testRef, testFile);
-    console.log("[Firebase] Test upload successful:", snapshot);
-
-    // Clean up - delete the test file
-    // Note: You'll need to implement delete functionality if needed
-
-    return true;
-  } catch (err) {
-    console.error("[Firebase] Test upload failed:", err);
-    console.error("[Firebase] Error code:", err.code);
-    console.error("[Firebase] Error message:", err.message);
-    return false;
-  }
-}
+export const firebaseUploadService = new FirebaseUploadService();

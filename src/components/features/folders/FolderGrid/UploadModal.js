@@ -26,7 +26,7 @@ export default function UploadModal({
         </div>
         <div className="p-6">
           <DocumentUploadWithTags
-            folderId={selectedFolder?._id}
+            folderId={selectedFolder?.id}
             onClose={onClose}
             onUploadSuccess={onUploadSuccess}
           />

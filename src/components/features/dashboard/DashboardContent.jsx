@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useApi } from "../../../hooks/useApi";
 import { API_ENDPOINTS } from "../../../lib/constants";
-import { FolderContent, FolderSidebar, StatsCards } from "./index";
+import FolderContent from "./FolderContent";
+import FolderSidebar from "./FolderSidebar"; // This should now point to the folder's index.js
+import StatsCards from "./StatsCards";
 
 export default function DashboardContent({
   user,
@@ -50,7 +52,8 @@ export default function DashboardContent({
         const foldersWithCounts = await Promise.all(
           foldersResponse.data.map(async (folder) => {
             const docCount = await fetch(
-              `${API_ENDPOINTS.DOCUMENTS.BASE}?folderId=${folder._id}`
+              `${API_ENDPOINTS.DOCUMENTS.BASE}?folderId=${folder.id}`,
+              { credentials: "include" }
             )
               .then((res) => res.json())
               .then((data) => (data.success ? data.pagination.total : 0))
@@ -58,7 +61,7 @@ export default function DashboardContent({
 
             return {
               ...folder,
-              id: folder._id,
+              id: folder.id,
               documentCount: docCount,
             };
           })
@@ -224,7 +227,7 @@ export default function DashboardContent({
           <FolderSidebar
             folders={folders}
             onFolderSelect={handleFolderSelect}
-            selectedFolderId={currentFolder?._id || currentFolder?.id}
+            selectedFolderId={currentFolder?.id || currentFolder?.id}
             onFolderCreated={handleFolderCreated}
           />
 

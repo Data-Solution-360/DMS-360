@@ -29,7 +29,7 @@ export default function AccessControlModal({
 
   const fetchCurrentPermissions = async () => {
     try {
-      const response = await fetch(`/api/folders/${folder._id}/permissions`);
+      const response = await fetch(`/api/folders/${folder.id}/permissions`);
       if (response.ok) {
         const data = await response.json();
         setCurrentPermissions(data.permissions || []);
@@ -69,7 +69,7 @@ export default function AccessControlModal({
   const grantAccess = async (userId) => {
     setUpdating((prev) => ({ ...prev, [userId]: true }));
     try {
-      const response = await fetch(`/api/folders/${folder._id}/permissions`, {
+      const response = await fetch(`/api/folders/${folder.id}/permissions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -96,7 +96,7 @@ export default function AccessControlModal({
   const revokeAccess = async (userId) => {
     setUpdating((prev) => ({ ...prev, [userId]: true }));
     try {
-      const response = await fetch(`/api/folders/${folder._id}/permissions`, {
+      const response = await fetch(`/api/folders/${folder.id}/permissions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -125,7 +125,7 @@ export default function AccessControlModal({
   };
 
   const filteredSearchResults = searchResults.filter(
-    (user) => !currentPermissions.some((perm) => perm.userId === user._id)
+    (user) => !currentPermissions.some((perm) => perm.userId === user.id)
   );
 
   return (
@@ -188,7 +188,7 @@ export default function AccessControlModal({
                 <div className="space-y-2">
                   {filteredSearchResults.map((user) => (
                     <div
-                      key={user._id}
+                      key={user.id}
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                     >
                       <div className="flex items-center space-x-3">
@@ -203,11 +203,11 @@ export default function AccessControlModal({
                         </div>
                       </div>
                       <button
-                        onClick={() => grantAccess(user._id)}
-                        disabled={updating[user._id]}
+                        onClick={() => grantAccess(user.id)}
+                        disabled={updating[user.id]}
                         className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                       >
-                        {updating[user._id] ? "Granting..." : "Grant Access"}
+                        {updating[user.id] ? "Granting..." : "Grant Access"}
                       </button>
                     </div>
                   ))}

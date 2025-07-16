@@ -1,110 +1,98 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "../../../../lib/database";
-import { Document } from "../../../../models/Document";
+import { requireAuth } from "../../../../lib/auth.js";
+import { firebaseUploadService } from "../../../../lib/firebaseUpload.js";
+import { DocumentService } from "../../../../lib/firestore.js";
 
-export async function GET(request, { params }) {
-  try {
-    await connectDB();
+// GET - Get document by ID
+async function GET(request, { params }) {
+  return requireAuth(async (request) => {
+    try {
+      const { id } = params;
+      const document = await DocumentService.getDocumentById(id);
 
-    const { id } = params;
+      if (!document) {
+        return NextResponse.json(
+          { success: false, error: "Document not found" },
+          { status: 404 }
+        );
+      }
 
-    const document = await Document.findById(id).populate(
-      "folderId",
-      "name path"
-    );
-
-    if (!document) {
+      return NextResponse.json({
+        success: true,
+        data: document,
+      });
+    } catch (error) {
+      console.error("Get document error:", error);
       return NextResponse.json(
-        { success: false, error: "Document not found" },
-        { status: 404 }
+        { success: false, error: "Internal server error" },
+        { status: 500 }
       );
     }
-
-    return NextResponse.json({
-      success: true,
-      data: document,
-    });
-  } catch (error) {
-    console.error("Get document error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
-  }
+  })(request);
 }
 
-export async function PUT(request, { params }) {
-  try {
-    await connectDB();
+// PUT - Update document
+async function PUT(request, { params }) {
+  return requireAuth(async (request) => {
+    try {
+      const { id } = params;
+      const updateData = await request.json();
 
-    const { id } = params;
-    const { name, tags } = await request.json();
+      const document = await DocumentService.updateDocument(id, updateData);
 
-    const document = await Document.findById(id);
-
-    if (!document) {
+      return NextResponse.json({
+        success: true,
+        data: document,
+      });
+    } catch (error) {
+      console.error("Update document error:", error);
       return NextResponse.json(
-        { success: false, error: "Document not found" },
-        { status: 404 }
+        { success: false, error: "Internal server error" },
+        { status: 500 }
       );
     }
-
-    // Update document fields
-    if (name) {
-      document.name = name;
-    }
-
-    if (tags) {
-      document.tags = tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean);
-    }
-
-    await document.save();
-
-    return NextResponse.json({
-      success: true,
-      data: document,
-    });
-  } catch (error) {
-    console.error("Update document error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
-  }
+  })(request);
 }
 
-export async function DELETE(request, { params }) {
-  try {
-    await connectDB();
+// DELETE - Delete document
+async function DELETE(request, { params }) {
+  return requireAuth(async (request) => {
+    try {
+      const { id } = params;
 
-    const { id } = params;
+      // Get document first to get storage path
+      const document = await DocumentService.getDocumentById(id);
+      if (!document) {
+        return NextResponse.json(
+          { success: false, error: "Document not found" },
+          { status: 404 }
+        );
+      }
 
-    const document = await Document.findById(id);
+      // Delete from Firebase Storage if path exists
+      if (document.firebaseStoragePath) {
+        try {
+          await firebaseUploadService.deleteFile(document.firebaseStoragePath);
+        } catch (storageError) {
+          console.warn("Failed to delete from storage:", storageError);
+        }
+      }
 
-    if (!document) {
+      // Delete from Firestore
+      await DocumentService.deleteDocument(id);
+
+      return NextResponse.json({
+        success: true,
+        message: "Document deleted successfully",
+      });
+    } catch (error) {
+      console.error("Delete document error:", error);
       return NextResponse.json(
-        { success: false, error: "Document not found" },
-        { status: 404 }
+        { success: false, error: "Internal server error" },
+        { status: 500 }
       );
     }
-
-    // TODO: Delete from Google Drive as well
-    // await googleDriveService.deleteFile(document.googleDriveId);
-
-    await Document.findByIdAndDelete(id);
-
-    return NextResponse.json({
-      success: true,
-      message: "Document deleted successfully",
-    });
-  } catch (error) {
-    console.error("Delete document error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
-  }
+  })(request);
 }
+
+export { DELETE, GET, PUT };

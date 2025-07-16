@@ -1,29 +1,37 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "../../../../lib/database";
-import { Folder } from "../../../../models/Folder";
+import {
+  DocumentService,
+  FolderService,
+  TagService,
+  UserService,
+} from "../../../lib/firestore.js";
 
-export async function GET(request) {
+// GET - Test route for checking Firestore connection
+async function GET(request) {
   try {
-    await connectDB();
-
-    // Test basic database operations
-    const folderCount = await Folder.countDocuments();
+    // Test all services
+    const users = await UserService.getAllUsers();
+    const documents = await DocumentService.getAllDocuments();
+    const folders = await FolderService.getAllFolders();
+    const tags = await TagService.getAllTags();
 
     return NextResponse.json({
       success: true,
-      message: "Database connection successful",
-      folderCount: folderCount,
-      timestamp: new Date().toISOString(),
+      message: "Firestore connection successful",
+      data: {
+        users: users.length,
+        documents: documents.length,
+        folders: folders.length,
+        tags: tags.length,
+      },
     });
   } catch (error) {
-    console.error("Test endpoint error:", error);
+    console.error("Test route error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Database connection failed",
-        details: error.message,
-      },
+      { success: false, error: "Firestore connection failed" },
       { status: 500 }
     );
   }
 }
+
+export { GET };

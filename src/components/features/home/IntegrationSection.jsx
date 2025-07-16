@@ -3,8 +3,8 @@
 export default function IntegrationSection() {
   const integrations = [
     {
-      name: "Google Drive",
-      description: "Seamless sync with your existing Google Drive files",
+      name: "Cloud",
+      description: "Seamless sync with your existing Cloud files",
       icon: "☁️",
       status: "Available",
       gradient: "from-emerald-400 to-teal-500",

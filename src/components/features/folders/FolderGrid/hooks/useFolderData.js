@@ -66,7 +66,7 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
           console.log("Auth error in development mode, creating demo folders");
           const demoFolders = [
             {
-              _id: "demo-folder-1",
+              id: "demo-folder-1",
               name: "Demo Folder 1",
               parentId: null,
               path: "demo-folder-1",
@@ -76,7 +76,7 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
               updatedAt: new Date(),
             },
             {
-              _id: "demo-folder-2",
+              id: "demo-folder-2",
               name: "Demo Folder 2",
               parentId: null,
               path: "demo-folder-2",
@@ -99,7 +99,7 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
         console.log("Error in development mode, creating demo folders");
         const demoFolders = [
           {
-            _id: "demo-folder-1",
+            id: "demo-folder-1",
             name: "Demo Folder 1",
             parentId: null,
             path: "demo-folder-1",
@@ -109,7 +109,7 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
             updatedAt: new Date(),
           },
           {
-            _id: "demo-folder-2",
+            id: "demo-folder-2",
             name: "Demo Folder 2",
             parentId: null,
             path: "demo-folder-2",
@@ -132,52 +132,52 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
 
   const fetchDocuments = async () => {
     try {
-      console.log("Fetching documents for folder:", selectedFolder?._id);
+      console.log("Fetching documents for folder:", selectedFolder?.id);
 
       // Check if this is a test folder (starts with "test-" or "demo-")
       const isTestFolder =
-        selectedFolder?._id?.startsWith("test-") ||
-        selectedFolder?._id?.startsWith("demo-");
+        selectedFolder?.id?.startsWith("test-") ||
+        selectedFolder?.id?.startsWith("demo-");
 
       if (isTestFolder) {
         console.log("Test folder detected, using demo documents");
         // For test folders, create some demo documents
         const demoDocuments = [
           {
-            _id: `demo-doc-${selectedFolder._id}-1`,
+            id: `demo-doc-${selectedFolder.id}-1`,
             name: "Sample Document 1",
             originalName: "sample1.pdf",
             mimeType: "application/pdf",
             size: 1024000,
-            folderId: selectedFolder._id,
-            googleDriveUrl: "#",
+            folderId: selectedFolder.id,
+            firebaseStorageUrl: "#",
             createdAt: new Date(),
             updatedAt: new Date(),
           },
           {
-            _id: `demo-doc-${selectedFolder._id}-2`,
+            id: `demo-doc-${selectedFolder.id}-2`,
             name: "Sample Document 2",
             originalName: "sample2.docx",
             mimeType:
               "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             size: 512000,
-            folderId: selectedFolder._id,
-            googleDriveUrl: "#",
+            folderId: selectedFolder.id,
+            firebaseStorageUrl: "#",
             createdAt: new Date(),
             updatedAt: new Date(),
           },
         ];
 
         // Add more documents for subfolders
-        if (selectedFolder._id.includes("subfolder")) {
+        if (selectedFolder.id.includes("subfolder")) {
           demoDocuments.push({
-            _id: `demo-doc-${selectedFolder._id}-3`,
+            id: `demo-doc-${selectedFolder.id}-3`,
             name: "Subfolder Document",
             originalName: "subfolder-doc.txt",
             mimeType: "text/plain",
             size: 256000,
-            folderId: selectedFolder._id,
-            googleDriveUrl: "#",
+            folderId: selectedFolder.id,
+            firebaseStorageUrl: "#",
             createdAt: new Date(),
             updatedAt: new Date(),
           });
@@ -189,7 +189,7 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
 
       let url = "/api/documents";
       if (selectedFolder) {
-        url += `?folderId=${selectedFolder._id}`;
+        url += `?folderId=${selectedFolder.id}`;
       }
 
       console.log("Fetching documents from URL:", url);

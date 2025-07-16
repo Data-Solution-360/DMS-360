@@ -200,7 +200,7 @@ export default function FolderGrid({
       // Show subfolders of the selected folder
       filteredFolders = folders.filter(
         (folder) =>
-          folder.parentId === selectedFolder._id && hasFolderAccess(folder)
+          folder.parentId === selectedFolder.id && hasFolderAccess(folder)
       );
     } else {
       // Show root folders
@@ -288,7 +288,7 @@ export default function FolderGrid({
     const hasDirectPermission =
       folder.permissions?.some((perm) => {
         const permUserId = perm.userId?.toString();
-        const userID = user._id?.toString();
+        const userID = user.id?.toString();
         return permUserId === userID;
       }) || false;
 
@@ -301,13 +301,13 @@ export default function FolderGrid({
   function checkInheritedPermissions(folder) {
     if (!folder || !folder.parentId) return false;
 
-    const parentFolder = folders.find((f) => f._id === folder.parentId);
+    const parentFolder = folders.find((f) => f.id === folder.parentId);
     if (!parentFolder) return false;
 
     const hasParentPermission =
       parentFolder.permissions?.some((perm) => {
         const permUserId = perm.userId?.toString();
-        const userID = user._id?.toString();
+        const userID = user.id?.toString();
         return permUserId === userID;
       }) || false;
 
@@ -330,7 +330,7 @@ export default function FolderGrid({
 
     return (
       <div
-        key={document._id}
+        key={document.id}
         className="group relative border-2 border-gray-200 bg-white/60 backdrop-blur-sm rounded-xl p-4 cursor-pointer transition-all duration-300 hover:bg-white/80 hover:shadow-lg hover:scale-105 hover:border-gray-200"
       >
         <div className="flex justify-center mb-3">
@@ -353,7 +353,7 @@ export default function FolderGrid({
                 onClick={(e) => {
                   e.stopPropagation();
                   window.open(
-                    document.googleDriveUrl || document.fileUrl,
+                    document.firebaseStorageUrl || document.fileUrl,
                     "_blank"
                   );
                 }}
@@ -390,7 +390,7 @@ export default function FolderGrid({
 
     return (
       <div
-        key={document._id}
+        key={document.id}
         className="group flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50"
       >
         <FiFileText className="h-5 w-5 mr-3 text-gray-500" />
@@ -406,7 +406,7 @@ export default function FolderGrid({
               onClick={(e) => {
                 e.stopPropagation();
                 window.open(
-                  document.googleDriveUrl || document.fileUrl,
+                  document.firebaseStorageUrl || document.fileUrl,
                   "_blank"
                 );
               }}
@@ -429,14 +429,14 @@ export default function FolderGrid({
   }
 
   function renderGridItem(folder) {
-    const isSelected = selectedFolder?._id === folder._id;
-    const isExpandedTo = expandToFolderId === folder._id;
-    const hasChildren = folders.some((f) => f.parentId === folder._id);
+    const isSelected = selectedFolder?.id === folder.id;
+    const isExpandedTo = expandToFolderId === folder.id;
+    const hasChildren = folders.some((f) => f.parentId === folder.id);
     const hasAccess = hasFolderAccess(folder);
 
     return (
       <div
-        key={folder._id}
+        key={folder.id}
         className={`group relative bg-white/60 backdrop-blur-sm rounded-xl p-4 transition-all duration-300 border-2 ${
           hasAccess
             ? "cursor-pointer hover:bg-white/80 hover:shadow-lg hover:scale-105"
@@ -492,7 +492,7 @@ export default function FolderGrid({
           <p className="text-xs text-gray-500 mt-1">
             {hasChildren
               ? `${
-                  folders.filter((f) => f.parentId === folder._id).length
+                  folders.filter((f) => f.parentId === folder.id).length
                 } items`
               : "Empty folder"}
           </p>
@@ -516,14 +516,14 @@ export default function FolderGrid({
   }
 
   function renderListItem(folder) {
-    const isSelected = selectedFolder?._id === folder._id;
-    const isExpandedTo = expandToFolderId === folder._id;
-    const hasChildren = folders.some((f) => f.parentId === folder._id);
+    const isSelected = selectedFolder?.id === folder.id;
+    const isExpandedTo = expandToFolderId === folder.id;
+    const hasChildren = folders.some((f) => f.parentId === folder.id);
     const hasAccess = hasFolderAccess(folder);
 
     return (
       <div
-        key={folder._id}
+        key={folder.id}
         className={`group flex items-center p-3 rounded-lg transition-all duration-200 ${
           hasAccess
             ? "cursor-pointer hover:bg-gray-50"
@@ -563,7 +563,7 @@ export default function FolderGrid({
           <p className="text-xs text-gray-500">
             {hasChildren
               ? `${
-                  folders.filter((f) => f.parentId === folder._id).length
+                  folders.filter((f) => f.parentId === folder.id).length
                 } items`
               : "Empty folder"}
           </p>

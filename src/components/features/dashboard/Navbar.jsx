@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 // Temporary icon replacements
 const FiFolder = () => <span>📁</span>;
@@ -28,6 +28,12 @@ export default function Navbar({
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const router = useRouter();
 
+  // Remove the console.log that causes rendering on every user change
+  // console.log(user);
+
+  // Memoize computed values
+  const isAdmin = useMemo(() => user?.role === "admin", [user?.role]);
+
   // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
@@ -37,27 +43,36 @@ export default function Navbar({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+  // Memoize callback functions to prevent recreation on every render
+  const toggleMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen((prev) => !prev);
+  }, []);
 
-  const toggleUserDropdown = () => {
-    setShowUserDropdown(!showUserDropdown);
-  };
+  const toggleUserDropdown = useCallback(() => {
+    setShowUserDropdown((prev) => !prev);
+  }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setIsMobileMenuOpen(false);
     setShowUserDropdown(false);
     onLogout();
-  };
+  }, [onLogout]);
 
-  const handleNavigation = (path) => {
-    router.push(path);
-    setIsMobileMenuOpen(false);
-    setShowUserDropdown(false);
-  };
+  const handleNavigation = useCallback(
+    (path) => {
+      router.push(path);
+      setIsMobileMenuOpen(false);
+      setShowUserDropdown(false);
+    },
+    [router]
+  );
 
-  const isAdmin = user?.role === "admin";
+  const handleSearchChange = useCallback(
+    (e) => {
+      onSearch(e.target.value);
+    },
+    [onSearch]
+  );
 
   return (
     <nav
@@ -73,7 +88,7 @@ export default function Navbar({
           <div className="flex items-center flex-shrink-0">
             <div
               className="flex items-center group cursor-pointer animate-scale-in"
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.push("/")}
             >
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full opacity-20 group-hover:opacity-40 transition-all duration-300 blur-sm"></div>
@@ -98,7 +113,7 @@ export default function Navbar({
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => onSearch(e.target.value)}
+                    onChange={handleSearchChange}
                     placeholder="Search documents..."
                     className="flex-1 py-3 px-3 bg-transparent text-white placeholder-white/60 focus:outline-none text-sm font-medium"
                   />
@@ -137,11 +152,11 @@ export default function Navbar({
                   )}
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-semibold text-white group-hover:text-emerald-300 transition-colors">
-                    {user?.name}
+                  <p className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">
+                    {user?.name || user?.email}
                   </p>
                   <div className="flex items-center space-x-1">
-                    <span className="text-xs bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-2 py-0.5 rounded-full font-semibold shadow-md">
+                    <span className="text-xs bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-2 py-0.5 rounded-full font-semibold shadow-md capitalize">
                       {user?.role}
                     </span>
                   </div>
@@ -152,12 +167,11 @@ export default function Navbar({
               {showUserDropdown && (
                 <div className="absolute right-0 mt-2 w-56 bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 py-2 z-50 animate-slide-in-top">
                   <div className="px-4 py-3 border-b border-white/10">
-                    <p className="text-sm font-semibold text-white">
-                      {user?.name}
+                    <p className="text-base font-bold text-white mb-1">
+                      {user?.name || "User"}
                     </p>
-                    <p className="text-sm text-white/60">{user?.email}</p>
-                    <div className="flex items-center space-x-1 mt-1">
-                      <span className="text-xs bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-2 py-0.5 rounded-full">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="text-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-3 py-1 rounded-full font-semibold capitalize">
                         {user?.role}
                       </span>
                       {user?.hasDocumentAccess && (
@@ -166,6 +180,7 @@ export default function Navbar({
                         </span>
                       )}
                     </div>
+                    <p className="text-xs text-white/60">{user?.email}</p>
                   </div>
 
                   <div className="py-1">
@@ -239,7 +254,7 @@ export default function Navbar({
                     <input
                       type="text"
                       value={searchQuery}
-                      onChange={(e) => onSearch(e.target.value)}
+                      onChange={handleSearchChange}
                       placeholder="Search documents..."
                       className="flex-1 py-3 px-3 bg-transparent text-white placeholder-white/60 focus:outline-none text-sm font-medium"
                     />
@@ -288,9 +303,11 @@ export default function Navbar({
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-white">{user?.name}</p>
-                    <div className="flex items-center space-x-1 mt-1">
-                      <span className="text-xs bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-2 py-0.5 rounded-full font-semibold shadow-md">
+                    <p className="font-bold text-white">
+                      {user?.name || "User"}
+                    </p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className="text-xs bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-2 py-0.5 rounded-full font-semibold shadow-md capitalize">
                         {user?.role}
                       </span>
                       {user?.hasDocumentAccess && (
@@ -299,6 +316,7 @@ export default function Navbar({
                         </span>
                       )}
                     </div>
+                    <p className="text-xs text-white/60 mt-1">{user?.email}</p>
                   </div>
                   <button
                     onClick={handleLogout}

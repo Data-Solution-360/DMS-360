@@ -50,10 +50,10 @@ const folderReducer = (state, action) => {
       return {
         ...state,
         folders: state.folders.map((folder) =>
-          folder._id === action.payload._id ? action.payload : folder
+          folder.id === action.payload.id ? action.payload : folder
         ),
         currentFolder:
-          state.currentFolder?._id === action.payload._id
+          state.currentFolder?.id === action.payload.id
             ? action.payload
             : state.currentFolder,
         isLoading: false,
@@ -62,11 +62,9 @@ const folderReducer = (state, action) => {
     case FOLDER_ACTIONS.DELETE_FOLDER:
       return {
         ...state,
-        folders: state.folders.filter(
-          (folder) => folder._id !== action.payload
-        ),
+        folders: state.folders.filter((folder) => folder.id !== action.payload),
         currentFolder:
-          state.currentFolder?._id === action.payload
+          state.currentFolder?.id === action.payload
             ? null
             : state.currentFolder,
         isLoading: false,
@@ -107,7 +105,7 @@ const buildFolderTree = (folders, parentId = null) => {
     .filter((folder) => folder.parentId === parentId)
     .map((folder) => ({
       ...folder,
-      children: buildFolderTree(folders, folder._id),
+      children: buildFolderTree(folders, folder.id),
     }));
 };
 

@@ -55,7 +55,7 @@ export default function DocumentList({
   };
 
   const handleDownload = (document) => {
-    window.open(document.googleDriveUrl, "_blank");
+    window.open(document.firebaseStorageUrl, "_blank");
   };
 
   const handleViewDocument = (document) => {
@@ -64,7 +64,7 @@ export default function DocumentList({
       // Handle both populated and unpopulated folderId
       const folderId =
         typeof document.folderId === "object"
-          ? document.folderId._id
+          ? document.folderId.id
           : document.folderId;
 
       console.log("Navigating to folder:", folderId);
@@ -182,7 +182,7 @@ Folder: ${document.folderId?.name || "Root"}
 
       {documents.map((document) => (
         <div
-          key={document._id}
+          key={document.id}
           className="group relative bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200 cursor-pointer"
           onClick={() => handleDocumentClick(document)}
         >
@@ -287,7 +287,7 @@ Folder: ${document.folderId?.name || "Root"}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleContentPreview(document._id);
+                    toggleContentPreview(document.id);
                   }}
                   className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
                   title="Preview Content"
@@ -321,7 +321,7 @@ Folder: ${document.folderId?.name || "Root"}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDelete(document._id);
+                  handleDelete(document.id);
                 }}
                 className="p-2 text-gray-400 hover:text-red-600 rounded-md hover:bg-red-50"
                 title="Delete"
@@ -334,7 +334,7 @@ Folder: ${document.folderId?.name || "Root"}
           {/* Content Preview for String Documents */}
           {document.mimeType === "text/plain" &&
             document.content &&
-            showContentPreview[document._id] && (
+            showContentPreview[document.id] && (
               <div className="border-t border-gray-200 bg-gray-50 p-4">
                 <div className="bg-white border border-gray-200 rounded-lg p-4 max-h-64 overflow-y-auto">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">

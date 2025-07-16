@@ -48,7 +48,7 @@ export default function AdminUsersPage() {
         // Update the user in the local state
         setUsers((prev) =>
           prev.map((user) =>
-            user._id === userId ? { ...user, ...updates } : user
+            user.id === userId ? { ...user, ...updates } : user
           )
         );
       }
@@ -146,7 +146,7 @@ export default function AdminUsersPage() {
             <div className="bg-white shadow overflow-hidden sm:rounded-md">
               <ul className="divide-y divide-gray-200">
                 {users.map((user) => (
-                  <li key={user._id} className="px-6 py-4">
+                  <li key={user.id} className="px-6 py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <div className="flex-shrink-0">
@@ -186,11 +186,11 @@ export default function AdminUsersPage() {
                           </span>
                           <button
                             onClick={() =>
-                              updateUserAccess(user._id, {
+                              updateUserAccess(user.id, {
                                 hasDocumentAccess: !user.hasDocumentAccess,
                               })
                             }
-                            disabled={updating[user._id]}
+                            disabled={updating[user.id]}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
                               user.hasDocumentAccess
                                 ? "bg-primary-600"
@@ -205,7 +205,7 @@ export default function AdminUsersPage() {
                               }`}
                             />
                           </button>
-                          {updating[user._id] && (
+                          {updating[user.id] && (
                             <div className="ml-2 animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
                           )}
                         </div>
@@ -218,11 +218,11 @@ export default function AdminUsersPage() {
                           <select
                             value={user.role}
                             onChange={(e) =>
-                              updateUserAccess(user._id, {
+                              updateUserAccess(user.id, {
                                 role: e.target.value,
                               })
                             }
-                            disabled={updating[user._id]}
+                            disabled={updating[user.id]}
                             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                           >
                             <option value="employee">Employee</option>

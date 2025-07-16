@@ -1,44 +1,38 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "../../../../lib/database";
-import { Folder } from "../../../../models/Folder";
+import { requireAuth } from "../../../lib/auth.js";
+import { FolderService } from "../../../lib/firestore.js";
 
-export async function GET() {
-  try {
-    await connectDB();
+// GET - Debug folders route
+async function GET(request) {
+  return requireAuth(async (request) => {
+    try {
+      const folders = await FolderService.getAllFolders();
 
-    const allFolders = await Folder.find({}).lean();
+      // Return debug information
+      const debugInfo = {
+        totalFolders: folders.length,
+        folders: folders.map((folder) => ({
+          id: folder.id,
+          name: folder.name,
+          parentId: folder.parentId,
+          level: folder.level || 0,
+          permissions: folder.permissions?.length || 0,
+          createdAt: folder.createdAt,
+        })),
+      };
 
-    // Convert to plain objects and show data types
-    const debugFolders = allFolders.map((folder) => ({
-      _id: folder._id,
-      _idType: typeof folder._id,
-      _idString: folder._id.toString(),
-      name: folder.name,
-      parentId: folder.parentId,
-      parentIdType: typeof folder.parentId,
-      parentIdString: folder.parentId ? folder.parentId.toString() : null,
-      path: folder.path,
-      level: folder.level,
-    }));
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        folders: debugFolders,
-        totalCount: debugFolders.length,
-        rootFolders: debugFolders.filter(
-          (f) => !f.parentId || f.parentId === null
-        ),
-        childFolders: debugFolders.filter(
-          (f) => f.parentId && f.parentId !== null
-        ),
-      },
-    });
-  } catch (error) {
-    console.error("Debug folders error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
-  }
+      return NextResponse.json({
+        success: true,
+        data: debugInfo,
+      });
+    } catch (error) {
+      console.error("Debug folders error:", error);
+      return NextResponse.json(
+        { success: false, error: "Internal server error" },
+        { status: 500 }
+      );
+    }
+  })(request);
 }
+
+export { GET };

@@ -21,12 +21,12 @@ export default function VersionHistoryModal({
   }, [isOpen, document]);
 
   // Add a key to force re-render when document changes
-  const modalKey = `${document?._id}-${isOpen}`;
+  const modalKey = `${document?.id}-${isOpen}`;
 
   const fetchVersions = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/documents/${document._id}/versions`);
+      const response = await fetch(`/api/documents/${document.id}/versions`);
       if (response.ok) {
         const data = await response.json();
         setVersions(data.versions);
@@ -141,7 +141,7 @@ export default function VersionHistoryModal({
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {versions.map((version) => (
               <div
-                key={version._id}
+                key={version.id}
                 className={`border rounded-lg p-4 transition-all duration-200 ${
                   version.isLatestVersion
                     ? "border-purple-300 bg-purple-50"
@@ -195,7 +195,7 @@ export default function VersionHistoryModal({
 
                   <div className="flex flex-col gap-2 ml-4">
                     <a
-                      href={version.googleDriveUrl}
+                      href={version.firebaseStorageUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors text-center"
@@ -205,7 +205,7 @@ export default function VersionHistoryModal({
 
                     {!version.isLatestVersion && (
                       <button
-                        onClick={() => handleRestore(version._id)}
+                        onClick={() => handleRestore(version.id)}
                         disabled={restoring}
                         className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >

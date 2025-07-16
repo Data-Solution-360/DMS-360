@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import Swal from "sweetalert2";
 import { validateRegister } from "../../../lib/validations";
 import { useAuth } from "../../../store";
 
@@ -15,7 +16,7 @@ export default function RegisterForm() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register } = useAuth();
+  const { register, updateUserProfile } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,8 +47,44 @@ export default function RegisterForm() {
     setIsSubmitting(true);
 
     try {
-      const result = await register(formData);
-      if (!result.success) {
+      // Pass email, password, and name to registration
+      const result = await register(
+        formData.email,
+        formData.password,
+        formData.name
+      );
+
+      if (result.success) {
+        // Update the user profile with the name (for Firebase Auth displayName)
+        if (formData.name) {
+          try {
+            await updateUserProfile(formData.name);
+          } catch (profileError) {
+            console.error("Failed to update profile:", profileError);
+            // Don't fail the registration if profile update fails
+          }
+        }
+
+        // Show success message with SweetAlert
+        await Swal.fire({
+          title: "🎉 Registration Successful!",
+          text: "Your account has been created successfully. Welcome to DMS-360!",
+          icon: "success",
+          confirmButtonText: "Continue to Dashboard",
+          confirmButtonColor: "#0ea5e9",
+          background: "#1e293b",
+          color: "#ffffff",
+          backdrop: `
+            rgba(0,0,123,0.4)
+            url("/images/nyan-cat.gif")
+            left top
+            no-repeat
+          `,
+        });
+
+        // Redirect to dashboard after user clicks the button
+        window.location.href = "/dashboard";
+      } else {
         setErrors({ general: result.error });
       }
     } catch (error) {

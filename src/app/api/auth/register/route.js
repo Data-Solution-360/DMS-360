@@ -1,31 +1,12 @@
 import jwt from "jsonwebtoken";
-import mongoose from "mongoose";
 import { NextResponse } from "next/server";
-import { User } from "../../../../models/User.js";
+import { hashPassword } from "../../../../lib/auth.js";
+import { UserService } from "../../../../lib/firestore.js";
 
-// Inline database connection
-let connection = {};
-
-async function connectDB() {
-  if (connection.isConnected) {
-    return;
-  }
-
+// POST - User registration
+async function POST(request) {
   try {
-    const db = await mongoose.connect(process.env.MONGODB_URI);
-    connection.isConnected = db.connections[0].readyState;
-    console.log("MongoDB connected successfully");
-  } catch (error) {
-    console.error("MongoDB connection error:", error);
-    throw error;
-  }
-}
-
-export async function POST(request) {
-  try {
-    await connectDB();
-
-    const { email, password, name } = await request.json();
+    const { email, password, name, role = "employee" } = await request.json();
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -35,51 +16,60 @@ export async function POST(request) {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await UserService.getUserByEmail(email);
     if (existingUser) {
       return NextResponse.json(
-        { success: false, error: "User with this email already exists" },
+        { success: false, error: "User already exists" },
         { status: 409 }
       );
     }
 
-    // Create new user (default role is "employee")
-    const user = new User({
-      email,
-      password,
-      name,
-      role: "employee", // Default role, admin can change this later
-    });
+    // Hash password
+    const hashedPassword = await hashPassword(password);
 
-    await user.save();
+    // Generate unique 6-digit UID
+    const customUid = await UserService.generateUniqueUid();
+
+    // Create user
+    const userData = {
+      uid: customUid, // Our custom 6-digit UID
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      name,
+      role,
+      hasDocumentAccess: false,
+    };
+
+    const user = await UserService.createUser(userData);
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+      { expiresIn: "7d" }
     );
 
-    const userResponse = {
-      _id: user._id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      avatar: user.avatar,
-    };
-
+    // Create response with token in cookie
     const response = NextResponse.json({
       success: true,
-      data: { user: userResponse, token },
-      message:
-        "Account created successfully. Please wait for admin approval to access documents.",
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        hasDocumentAccess: user.hasDocumentAccess,
+      },
     });
 
     // Set HTTP-only cookie
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
 
@@ -92,3 +82,5 @@ export async function POST(request) {
     );
   }
 }
+
+export { POST };

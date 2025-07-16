@@ -30,7 +30,7 @@ export default function FolderBreadcrumb({
     // Build path from current folder up to root
     while (currentFolder) {
       path.unshift(currentFolder);
-      currentFolder = folders.find((f) => f._id === currentFolder.parentId);
+      currentFolder = folders.find((f) => f.id === currentFolder.parentId);
     }
 
     setBreadcrumbPath(path);
@@ -70,7 +70,7 @@ export default function FolderBreadcrumb({
       </button>
 
       {breadcrumbPath.map((folder, index) => (
-        <div key={folder._id} className="flex items-center">
+        <div key={folder.id} className="flex items-center">
           <div className="mx-2 text-gray-400">
             <FiChevronRight className="h-4 w-4" />
           </div>

@@ -49,6 +49,7 @@ export const API_ENDPOINTS = {
   DOCUMENTS: {
     BASE: "/api/documents",
     UPLOAD: "/api/documents/upload",
+    UPLOAD_STRING: "/api/documents/upload-string",
     VERSIONS: "/api/documents/versions",
     RESTORE: "/api/documents/restore",
   },

@@ -20,7 +20,7 @@ export default function CreateFolderModal({
     setMounted(true);
     // Find parent folder info if parentId is provided
     if (parentId && allFolders.length > 0) {
-      const parent = allFolders.find((f) => f._id === parentId);
+      const parent = allFolders.find((f) => f.id === parentId);
       setParentFolder(parent);
     }
   }, [parentId, allFolders]);

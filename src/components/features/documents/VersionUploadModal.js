@@ -37,7 +37,7 @@ export default function VersionUploadModal({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("documentId", document._id);
+      formData.append("documentId", document.id);
       formData.append("userId", userId);
 
       const response = await fetch("/api/documents/upload-version", {

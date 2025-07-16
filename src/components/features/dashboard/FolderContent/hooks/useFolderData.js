@@ -21,7 +21,7 @@ export const useFolderData = (currentFolder, apiCall) => {
     // In a full implementation, you would fetch the complete path hierarchy
     const path = [
       {
-        id: folder._id,
+        id: folder.id,
         name: folder.name,
       },
     ];
@@ -40,12 +40,12 @@ export const useFolderData = (currentFolder, apiCall) => {
           try {
             // Fetch documents count
             const documentsResponse = await apiCall(
-              `${API_ENDPOINTS.DOCUMENTS.BASE}?folderId=${folder._id}`
+              `${API_ENDPOINTS.DOCUMENTS.BASE}?folderId=${folder.id}`
             );
 
             // Fetch subfolders count
             const subfoldersResponse = await apiCall(
-              `${API_ENDPOINTS.FOLDERS.BASE}?parentId=${folder._id}`
+              `${API_ENDPOINTS.FOLDERS.BASE}?parentId=${folder.id}`
             );
 
             const documentsCount = documentsResponse.success
@@ -55,17 +55,17 @@ export const useFolderData = (currentFolder, apiCall) => {
               ? subfoldersResponse.data?.length || 0
               : 0;
 
-            stats[folder._id] = {
+            stats[folder.id] = {
               documents: documentsCount,
               subfolders: subfoldersCount,
               total: documentsCount + subfoldersCount,
             };
           } catch (error) {
             console.error(
-              `Error fetching stats for folder ${folder._id}:`,
+              `Error fetching stats for folder ${folder.id}:`,
               error
             );
-            stats[folder._id] = { documents: 0, subfolders: 0, total: 0 };
+            stats[folder.id] = { documents: 0, subfolders: 0, total: 0 };
           }
         }
 
@@ -92,12 +92,12 @@ export const useFolderData = (currentFolder, apiCall) => {
     try {
       // Fetch documents for current folder
       const documentsResponse = await apiCall(
-        `${API_ENDPOINTS.DOCUMENTS.BASE}?folderId=${currentFolder._id}&limit=50&sortBy=createdAt&sortOrder=desc`
+        `${API_ENDPOINTS.DOCUMENTS.BASE}?folderId=${currentFolder.id}&limit=50&sortBy=createdAt&sortOrder=desc`
       );
 
       // Fetch child folders for current folder
       const foldersResponse = await apiCall(
-        `${API_ENDPOINTS.FOLDERS.BASE}?parentId=${currentFolder._id}`
+        `${API_ENDPOINTS.FOLDERS.BASE}?parentId=${currentFolder.id}`
       );
 
       if (documentsResponse.success) {

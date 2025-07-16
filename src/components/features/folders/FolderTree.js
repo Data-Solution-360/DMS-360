@@ -75,7 +75,7 @@ export default function FolderTree({
           "Frontend: Received folders:",
           response.data.data.map((f) => ({
             name: f.name,
-            _id: f._id,
+            id: f.id,
             parentId: f.parentId,
             level: f.level,
           }))
@@ -97,7 +97,7 @@ export default function FolderTree({
   };
 
   const expandToFolderPath = (targetFolderId) => {
-    const targetFolder = folders.find((f) => f._id === targetFolderId);
+    const targetFolder = folders.find((f) => f.id === targetFolderId);
     if (!targetFolder) return;
 
     const newExpanded = new Set(expandedFolders);
@@ -106,7 +106,7 @@ export default function FolderTree({
     let currentFolder = targetFolder;
     while (currentFolder.parentId) {
       newExpanded.add(currentFolder.parentId);
-      currentFolder = folders.find((f) => f._id === currentFolder.parentId);
+      currentFolder = folders.find((f) => f.id === currentFolder.parentId);
       if (!currentFolder) break;
     }
 
@@ -160,31 +160,29 @@ export default function FolderTree({
     }
 
     try {
-      const response = await axios.delete(
-        `/api/folders?folderId=${folder._id}`
-      );
+      const response = await axios.delete(`/api/folders?folderId=${folder.id}`);
 
       if (response.data.success) {
         // Remove from expanded folders if it was expanded
         const newExpanded = new Set(expandedFolders);
-        newExpanded.delete(folder._id);
+        newExpanded.delete(folder.id);
         setExpandedFolders(newExpanded);
 
         // Clear expanded root folder if it was deleted
-        if (expandedRootFolder === folder._id) {
+        if (expandedRootFolder === folder.id) {
           setExpandedRootFolder(null);
         }
 
         // Clear from board expanded folders
         const newBoardExpanded = new Set(expandedFoldersBoard);
-        newBoardExpanded.delete(folder._id);
+        newBoardExpanded.delete(folder.id);
         setExpandedFoldersBoard(newBoardExpanded);
 
         // Refresh the folder list
         await fetchFolders();
 
         // Clear selection if the deleted folder was selected
-        if (selectedFolder?._id === folder._id) {
+        if (selectedFolder?.id === folder.id) {
           onFolderSelect(null);
         }
       } else {
@@ -200,22 +198,22 @@ export default function FolderTree({
 
   const handleRootFolderDoubleClick = (folder) => {
     // Toggle expanded state for root folder in board view
-    if (expandedRootFolder === folder._id) {
+    if (expandedRootFolder === folder.id) {
       setExpandedRootFolder(null); // Collapse
       // Also collapse all its subfolders
       const newExpanded = new Set(expandedFoldersBoard);
-      newExpanded.delete(folder._id);
+      newExpanded.delete(folder.id);
       // Remove all subfolders of this folder
       folders.forEach((f) => {
-        if (f.parentId && f.parentId.toString() === folder._id.toString()) {
-          newExpanded.delete(f._id);
+        if (f.parentId && f.parentId.toString() === folder.id.toString()) {
+          newExpanded.delete(f.id);
         }
       });
       setExpandedFoldersBoard(newExpanded);
     } else {
-      setExpandedRootFolder(folder._id); // Expand this folder
+      setExpandedRootFolder(folder.id); // Expand this folder
       const newExpanded = new Set(expandedFoldersBoard);
-      newExpanded.add(folder._id);
+      newExpanded.add(folder.id);
       setExpandedFoldersBoard(newExpanded);
     }
   };
@@ -224,51 +222,51 @@ export default function FolderTree({
     // Toggle expanded state for any folder in board view
     const newExpanded = new Set(expandedFoldersBoard);
 
-    if (newExpanded.has(folder._id)) {
+    if (newExpanded.has(folder.id)) {
       // Collapse this folder and all its subfolders
-      newExpanded.delete(folder._id);
+      newExpanded.delete(folder.id);
       // Remove all subfolders of this folder
       folders.forEach((f) => {
-        if (f.parentId && f.parentId.toString() === folder._id.toString()) {
-          newExpanded.delete(f._id);
+        if (f.parentId && f.parentId.toString() === folder.id.toString()) {
+          newExpanded.delete(f.id);
         }
       });
     } else {
       // Expand this folder
-      newExpanded.add(folder._id);
+      newExpanded.add(folder.id);
     }
 
     setExpandedFoldersBoard(newExpanded);
   };
 
   const renderFolderBoardRecursive = (folder, level = 0) => {
-    const isSelected = selectedFolder?._id === folder._id;
-    const isExpandedTo = expandToFolderId === folder._id;
-    const isExpanded = expandedFoldersBoard.has(folder._id);
+    const isSelected = selectedFolder?.id === folder.id;
+    const isExpandedTo = expandToFolderId === folder.id;
+    const isExpanded = expandedFoldersBoard.has(folder.id);
     const hasChildren = folders.some((f) => {
       const childParentId = f.parentId ? f.parentId.toString() : null;
-      return childParentId === folder._id.toString();
+      return childParentId === folder.id.toString();
     });
 
     // Find parent folder name for subfolders
     const parentFolder = folder.parentId
-      ? folders.find((f) => f._id.toString() === folder.parentId.toString())
+      ? folders.find((f) => f.id.toString() === folder.parentId.toString())
       : null;
 
     // Check if this is a root folder that can be expanded
     const isRootFolder = !folder.parentId || folder.parentId === null;
-    const isExpandedRoot = expandedRootFolder === folder._id;
+    const isExpandedRoot = expandedRootFolder === folder.id;
 
     // Get subfolders of this folder
     const subfolders = folders
       .filter((f) => {
         const childParentId = f.parentId ? f.parentId.toString() : null;
-        return childParentId === folder._id.toString();
+        return childParentId === folder.id.toString();
       })
       .sort((a, b) => a.name.localeCompare(b.name));
 
     return (
-      <div key={folder._id}>
+      <div key={folder.id}>
         <div
           onDoubleClick={() =>
             isRootFolder
@@ -303,7 +301,7 @@ export default function FolderTree({
               {mounted && (
                 <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={(e) => handleCreateSubfolder(e, folder._id)}
+                    onClick={(e) => handleCreateSubfolder(e, folder.id)}
                     className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-all"
                     title="Create subfolder"
                   >
@@ -357,12 +355,12 @@ export default function FolderTree({
   };
 
   const renderFolderList = (folder, level = 0) => {
-    const isExpanded = expandedFolders.has(folder._id);
-    const isSelected = selectedFolder?._id === folder._id;
-    const isExpandedTo = expandToFolderId === folder._id;
+    const isExpanded = expandedFolders.has(folder.id);
+    const isSelected = selectedFolder?.id === folder.id;
+    const isExpandedTo = expandToFolderId === folder.id;
 
     // Convert both IDs to strings for comparison to handle ObjectId vs String mismatch
-    const folderIdString = folder._id.toString();
+    const folderIdString = folder.id.toString();
     const hasChildren = folders.some((f) => {
       const childParentId = f.parentId ? f.parentId.toString() : null;
       return childParentId === folderIdString;
@@ -371,7 +369,7 @@ export default function FolderTree({
     const maxLevel = 10; // Visual limit for indentation, but no functional limit
 
     return (
-      <div key={folder._id}>
+      <div key={folder.id}>
         <div
           className={`group flex items-center px-2 py-1 rounded-md cursor-pointer hover:bg-gray-100 transition-colors ${
             isSelected ? "bg-primary-100 text-primary-700" : ""
@@ -385,7 +383,7 @@ export default function FolderTree({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                toggleFolder(folder._id);
+                toggleFolder(folder.id);
               }}
               className="mr-1 text-gray-500 hover:text-gray-700"
             >
@@ -405,7 +403,7 @@ export default function FolderTree({
           {mounted && (
             <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
-                onClick={(e) => handleCreateSubfolder(e, folder._id)}
+                onClick={(e) => handleCreateSubfolder(e, folder.id)}
                 className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-all"
                 title="Create subfolder"
               >
@@ -505,7 +503,7 @@ export default function FolderTree({
                 )
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map((folder) => (
-                  <div key={folder._id}>
+                  <div key={folder.id}>
                     <div
                       onDoubleClick={() => handleRootFolderDoubleClick(folder)}
                       className="cursor-pointer"

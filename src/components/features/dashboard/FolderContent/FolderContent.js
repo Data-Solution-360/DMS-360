@@ -150,13 +150,13 @@ export default function FolderContent({ currentFolder, onFolderNavigation }) {
               if (item.type === "document") {
                 return viewMode === "grid" ? (
                   <DocumentCard
-                    key={item._id}
+                    key={item.id}
                     document={item}
                     onAction={handleDocumentAction}
                   />
                 ) : (
                   <DocumentList
-                    key={item._id}
+                    key={item.id}
                     document={item}
                     onAction={handleDocumentAction}
                   />
@@ -164,16 +164,16 @@ export default function FolderContent({ currentFolder, onFolderNavigation }) {
               } else {
                 return viewMode === "grid" ? (
                   <FolderCard
-                    key={item._id}
+                    key={item.id}
                     folder={item}
-                    stats={folderStats[item._id] || folderStats}
+                    stats={folderStats[item.id] || folderStats}
                     onDoubleClick={handleFolderDoubleClick}
                   />
                 ) : (
                   <FolderList
-                    key={item._id}
+                    key={item.id}
                     folder={item}
-                    stats={folderStats[item._id]}
+                    stats={folderStats[item.id]}
                     onDoubleClick={handleFolderDoubleClick}
                   />
                 );

@@ -12,7 +12,7 @@ export default function TagDisplay({ tags = [], onRemoveTag }) {
     <div className="flex flex-wrap gap-2">
       {tags.map((tag, index) => (
         <div
-          key={tag._id || index}
+          key={tag.id || index}
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-300"
         >
           <span className="capitalize">{tag.name}</span>

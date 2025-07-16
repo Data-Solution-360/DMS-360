@@ -1,91 +1,72 @@
 import { NextResponse } from "next/server";
-import { verifyToken } from "../../../../lib/auth.js";
-import { connectDB } from "../../../../lib/database";
-import { Document } from "../../../../models/Document";
-import { Folder } from "../../../../models/Folder";
-import { User } from "../../../../models/User";
+import { requireAuth } from "../../../../lib/auth.js";
+import {
+  DocumentService,
+  FolderService,
+  TagService,
+  UserService,
+} from "../../../../lib/firestore.js";
 
-export async function GET(request) {
-  try {
-    await connectDB();
+// GET - Get dashboard statistics
+async function GET(request) {
+  return requireAuth(async (request) => {
+    try {
+      // Get counts from all services
+      const users = await UserService.getAllUsers();
+      const documents = await DocumentService.getAllDocuments();
+      const folders = await FolderService.getAllFolders();
+      const tags = await TagService.getAllTags();
 
-    // Check authentication
-    const token = request.cookies.get("token")?.value;
-    let user = await verifyToken(token);
+      // Calculate additional stats
+      const totalFileSize = documents.reduce(
+        (sum, doc) => sum + (doc.size || 0),
+        0
+      );
+      const activeDocuments = documents.filter(
+        (doc) => doc.isActive !== false
+      ).length;
+      const activeUsers = users.filter(
+        (user) => user.hasDocumentAccess !== false
+      ).length;
 
-    if (!user) {
-      // For development mode, create a demo user if no auth
-      if (process.env.NODE_ENV === "development") {
-        console.log("No auth in development mode, using demo user");
-        user = {
-          userId: "demo-user-id",
-          email: "demo@dms360.com",
-          role: "admin",
-        };
-      } else {
-        return NextResponse.json(
-          { success: false, error: "Unauthorized" },
-          { status: 401 }
-        );
-      }
-    }
+      // Get recent activity (last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Build queries based on user role
-    let documentQuery = { isLatestVersion: true, isActive: true };
-    let folderQuery = {};
+      const recentDocuments = documents.filter((doc) => {
+        const createdAt = doc.createdAt?.toDate
+          ? doc.createdAt.toDate()
+          : new Date(doc.createdAt);
+        return createdAt >= sevenDaysAgo;
+      });
 
-    // If user is not admin, filter by permissions
-    if (user.role !== "admin") {
-      // For documents, filter by user's access
-      // This assumes documents inherit folder permissions
-      const accessibleFolderIds = await Folder.find({
-        "permissions.userId": user.userId || user._id,
-      }).distinct("_id");
-
-      documentQuery.folderId = { $in: accessibleFolderIds };
-
-      // For folders, filter by user's permissions
-      folderQuery = {
-        "permissions.userId": user.userId || user._id,
+      const stats = {
+        totalUsers: users.length,
+        activeUsers: activeUsers,
+        totalDocuments: documents.length,
+        activeDocuments: activeDocuments,
+        totalFolders: folders.length,
+        totalTags: tags.length,
+        totalFileSize: totalFileSize,
+        recentDocuments: recentDocuments.length,
+        averageFileSize:
+          documents.length > 0
+            ? Math.round(totalFileSize / documents.length)
+            : 0,
       };
+
+      return NextResponse.json({
+        success: true,
+        data: stats,
+      });
+    } catch (error) {
+      console.error("Get stats error:", error);
+      return NextResponse.json(
+        { success: false, error: "Internal server error" },
+        { status: 500 }
+      );
     }
-
-    // Get statistics
-    const [totalDocuments, totalFolders, totalUsers, storageUsed] =
-      await Promise.all([
-        Document.countDocuments(documentQuery),
-        Folder.countDocuments(folderQuery),
-        User.countDocuments({}),
-        Document.aggregate([
-          { $match: documentQuery },
-          {
-            $group: {
-              _id: null,
-              totalSize: { $sum: "$size" },
-            },
-          },
-        ]),
-      ]);
-
-    // Extract storage size from aggregation result
-    const storageSize = storageUsed.length > 0 ? storageUsed[0].totalSize : 0;
-
-    const stats = {
-      totalDocuments,
-      totalFolders,
-      totalUsers,
-      storageUsed: storageSize,
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: stats,
-    });
-  } catch (error) {
-    console.error("Dashboard stats error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
-  }
+  })(request);
 }
+
+export { GET };

@@ -2,11 +2,20 @@
 
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useReducer,
   useState,
 } from "react";
+
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
+import { auth } from "../lib/firebase";
 
 // Initial state
 const initialState = {
@@ -17,41 +26,44 @@ const initialState = {
 };
 
 // Action types
-const AUTH_ACTIONS = {
-  LOGIN_START: "LOGIN_START",
+const actionTypes = {
+  AUTH_STATE_CHANGED: "AUTH_STATE_CHANGED",
   LOGIN_SUCCESS: "LOGIN_SUCCESS",
-  LOGIN_FAILURE: "LOGIN_FAILURE",
+  LOGIN_ERROR: "LOGIN_ERROR",
   LOGOUT: "LOGOUT",
+  REGISTER_SUCCESS: "REGISTER_SUCCESS",
+  REGISTER_ERROR: "REGISTER_ERROR",
   SET_LOADING: "SET_LOADING",
   CLEAR_ERROR: "CLEAR_ERROR",
 };
 
-// Reducer function
-const authReducer = (state, action) => {
+// Reducer
+function authReducer(state, action) {
   switch (action.type) {
-    case AUTH_ACTIONS.LOGIN_START:
+    case actionTypes.AUTH_STATE_CHANGED:
       return {
         ...state,
-        isLoading: true,
-        error: null,
+        user: action.payload.user,
+        isAuthenticated: !!action.payload.user,
+        isLoading: false,
       };
-    case AUTH_ACTIONS.LOGIN_SUCCESS:
+    case actionTypes.LOGIN_SUCCESS:
       return {
         ...state,
-        user: action.payload,
+        user: action.payload.user,
         isAuthenticated: true,
         isLoading: false,
         error: null,
       };
-    case AUTH_ACTIONS.LOGIN_FAILURE:
+    case actionTypes.LOGIN_ERROR:
       return {
         ...state,
         user: null,
         isAuthenticated: false,
         isLoading: false,
-        error: action.payload,
+        error: action.payload.error,
       };
-    case AUTH_ACTIONS.LOGOUT:
+    case actionTypes.LOGOUT:
       return {
         ...state,
         user: null,
@@ -59,12 +71,28 @@ const authReducer = (state, action) => {
         isLoading: false,
         error: null,
       };
-    case AUTH_ACTIONS.SET_LOADING:
+    case actionTypes.REGISTER_SUCCESS:
+      return {
+        ...state,
+        user: action.payload.user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      };
+    case actionTypes.REGISTER_ERROR:
+      return {
+        ...state,
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: action.payload.error,
+      };
+    case actionTypes.SET_LOADING:
       return {
         ...state,
         isLoading: action.payload,
       };
-    case AUTH_ACTIONS.CLEAR_ERROR:
+    case actionTypes.CLEAR_ERROR:
       return {
         ...state,
         error: null,
@@ -72,139 +100,259 @@ const authReducer = (state, action) => {
     default:
       return state;
   }
-};
+}
 
-// Create context
+// Auth Context
 const AuthContext = createContext();
 
-// Provider component
-export const AuthProvider = ({ children }) => {
+// Auth Provider
+export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
-  const [mounted, setMounted] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
-  // Set mounted state to prevent hydration issues
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Token refresh helper
+  const refreshToken = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) return null;
 
-  // Check authentication status after mount
-  useEffect(() => {
-    if (mounted) {
-      checkAuthStatus();
-    }
-  }, [mounted]);
-
-  const checkAuthStatus = async () => {
     try {
-      const response = await fetch("/api/auth/me");
+      const freshToken = await user.getIdToken(true);
+
+      // Update server with fresh token
+      const response = await fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ idToken: freshToken }),
+        credentials: "include",
+      });
+
       if (response.ok) {
-        const user = await response.json();
-        dispatch({ type: AUTH_ACTIONS.LOGIN_SUCCESS, payload: user });
-      } else {
-        dispatch({ type: AUTH_ACTIONS.LOGOUT });
+        console.log("[Auth] Token refreshed successfully");
+        return freshToken;
       }
     } catch (error) {
-      console.error("Auth check error:", error);
-      dispatch({ type: AUTH_ACTIONS.LOGOUT });
+      console.error("[Auth] Token refresh failed:", error);
     }
-  };
+    return null;
+  }, []);
 
-  const login = async (credentials) => {
-    console.log("AuthContext: Login started with credentials:", credentials);
-    dispatch({ type: AUTH_ACTIONS.LOGIN_START });
+  // Set up automatic token refresh
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Refresh token every 50 minutes (before 1 hour expiry)
+    const refreshInterval = setInterval(async () => {
+      console.log("[Auth] Refreshing token automatically...");
+      await refreshToken();
+    }, 50 * 60 * 1000); // 50 minutes
+
+    return () => clearInterval(refreshInterval);
+  }, [state.user, refreshToken]);
+
+  // Check auth state on mount
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          // Get user data from our API
+          const response = await fetch("/api/auth/me", {
+            credentials: "include",
+          });
+          const data = await response.json();
+
+          if (data.success) {
+            dispatch({
+              type: actionTypes.AUTH_STATE_CHANGED,
+              payload: { user: data.user },
+            });
+          } else {
+            // If API call fails, try to refresh token
+            const freshToken = await refreshToken();
+            if (freshToken) {
+              // Retry getting user data
+              const retryResponse = await fetch("/api/auth/me", {
+                credentials: "include",
+              });
+              const retryData = await retryResponse.json();
+
+              if (retryData.success) {
+                dispatch({
+                  type: actionTypes.AUTH_STATE_CHANGED,
+                  payload: { user: retryData.user },
+                });
+              } else {
+                dispatch({ type: actionTypes.LOGOUT });
+              }
+            } else {
+              dispatch({ type: actionTypes.LOGOUT });
+            }
+          }
+        } catch (error) {
+          console.error("Auth state error:", error);
+          dispatch({ type: actionTypes.LOGOUT });
+        }
+      } else {
+        dispatch({ type: actionTypes.LOGOUT });
+      }
+      setInitialLoad(false);
+    });
+
+    return () => unsubscribe();
+  }, [refreshToken]);
+
+  // Memoize callback functions to prevent recreation
+  const login = useCallback(async (email, password) => {
     try {
-      console.log("AuthContext: Making API call to /api/auth/login");
+      dispatch({ type: actionTypes.SET_LOADING, payload: true });
+
+      // First, authenticate with Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      // Get the ID token
+      const idToken = await user.getIdToken();
+
+      // Send the ID token to our API for verification and to get user data
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(credentials),
+        body: JSON.stringify({ idToken }),
+        credentials: "include",
       });
 
-      console.log("AuthContext: API response status:", response.status);
       const data = await response.json();
-      console.log("AuthContext: API response data:", data);
 
-      if (response.ok) {
-        console.log("AuthContext: Login successful, dispatching LOGIN_SUCCESS");
-        // The API returns { success: true, data: { user: {...}, token: "..." } }
-        const userData = data.data ? data.data.user : data.user;
-        dispatch({ type: AUTH_ACTIONS.LOGIN_SUCCESS, payload: userData });
-        return { success: true };
+      if (data.success) {
+        dispatch({
+          type: actionTypes.LOGIN_SUCCESS,
+          payload: { user: data.user },
+        });
+        return { success: true, user: data.user };
       } else {
-        console.log("AuthContext: Login failed, dispatching LOGIN_FAILURE");
-        const errorMessage = data.error || data.message || "Login failed";
-        dispatch({ type: AUTH_ACTIONS.LOGIN_FAILURE, payload: errorMessage });
-        return { success: false, error: errorMessage };
+        dispatch({
+          type: actionTypes.LOGIN_ERROR,
+          payload: { error: data.error },
+        });
+        return { success: false, error: data.error };
       }
     } catch (error) {
-      console.error("AuthContext: Login error:", error);
-      dispatch({ type: AUTH_ACTIONS.LOGIN_FAILURE, payload: "Login failed" });
-      return { success: false, error: "Login failed" };
-    }
-  };
+      console.error("Login error:", error);
+      let errorMessage = "Login failed";
 
-  const register = async (userData) => {
-    dispatch({ type: AUTH_ACTIONS.LOGIN_START });
+      // Handle Firebase Auth errors
+      if (error.code === "auth/user-not-found") {
+        errorMessage = "No account found with this email";
+      } else if (error.code === "auth/wrong-password") {
+        errorMessage = "Incorrect password";
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address";
+      } else if (error.code === "auth/too-many-requests") {
+        errorMessage = "Too many failed login attempts. Please try again later";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      dispatch({
+        type: actionTypes.LOGIN_ERROR,
+        payload: { error: errorMessage },
+      });
+      return { success: false, error: errorMessage };
+    } finally {
+      dispatch({ type: actionTypes.SET_LOADING, payload: false });
+    }
+  }, []);
+
+  const register = useCallback(async (userData) => {
     try {
+      dispatch({ type: actionTypes.SET_LOADING, payload: true });
+
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(userData),
+        credentials: "include",
       });
 
       const data = await response.json();
 
-      if (response.ok) {
-        dispatch({ type: AUTH_ACTIONS.LOGIN_SUCCESS, payload: data.user });
-        return { success: true };
+      if (data.success) {
+        dispatch({
+          type: actionTypes.REGISTER_SUCCESS,
+          payload: { user: data.user },
+        });
+        return { success: true, user: data.user };
       } else {
-        dispatch({ type: AUTH_ACTIONS.LOGIN_FAILURE, payload: data.message });
-        return { success: false, error: data.message };
+        dispatch({
+          type: actionTypes.REGISTER_ERROR,
+          payload: { error: data.error },
+        });
+        return { success: false, error: data.error };
       }
     } catch (error) {
+      console.error("Registration error:", error);
       dispatch({
-        type: AUTH_ACTIONS.LOGIN_FAILURE,
-        payload: "Registration failed",
+        type: actionTypes.REGISTER_ERROR,
+        payload: { error: "Registration failed" },
       });
       return { success: false, error: "Registration failed" };
+    } finally {
+      dispatch({ type: actionTypes.SET_LOADING, payload: false });
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      await signOut(auth);
+      dispatch({ type: actionTypes.LOGOUT });
+      return { success: true };
     } catch (error) {
       console.error("Logout error:", error);
-    } finally {
-      dispatch({ type: AUTH_ACTIONS.LOGOUT });
+      dispatch({ type: actionTypes.LOGOUT });
+      return { success: false, error: "Logout failed" };
     }
-  };
+  }, []);
 
-  const clearError = () => {
-    dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
-  };
+  const clearError = useCallback(() => {
+    dispatch({ type: actionTypes.CLEAR_ERROR });
+  }, []);
 
-  const value = {
-    ...state,
-    login,
-    register,
-    logout,
-    clearError,
-    checkAuthStatus,
-  };
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(
+    () => ({
+      ...state,
+      login,
+      register,
+      logout,
+      clearError,
+      initialLoad,
+      refreshToken, // Expose refresh function
+    }),
+    [state, login, register, logout, clearError, initialLoad, refreshToken]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+}
 
-// Custom hook to use auth context
-export const useAuth = () => {
+// Hook to use auth context
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-};
+}

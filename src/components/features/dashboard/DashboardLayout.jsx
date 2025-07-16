@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "../../../store/AuthContext";
 import { DateFilter, Navbar, SearchBar } from "./index";
 
-export default function DashboardLayout({ children, user, onLogout }) {
+export default function DashboardLayout({ children }) {
+  const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchScope, setSearchScope] = useState("all");
   const [startDate, setStartDate] = useState("");
@@ -14,17 +16,18 @@ export default function DashboardLayout({ children, user, onLogout }) {
   const [showResizeHandle, setShowResizeHandle] = useState(false);
   const resizeRef = useRef(null);
 
-  const handleSearch = (query) => {
+  // Memoize callback functions
+  const handleSearch = useCallback((query) => {
     setSearchQuery(query);
-  };
+  }, []);
 
-  const handleSearchScopeChange = (scope) => {
+  const handleSearchScopeChange = useCallback((scope) => {
     setSearchScope(scope);
-  };
+  }, []);
 
-  const handleDateClear = () => {
+  const handleDateClear = useCallback(() => {
     // Handle date filter clear
-  };
+  }, []);
 
   // Handle mouse down for resizing
   const handleMouseDown = (e) => {
@@ -99,7 +102,7 @@ export default function DashboardLayout({ children, user, onLogout }) {
         onSearch={handleSearch}
         searchScope={searchScope}
         onSearchScopeChange={handleSearchScopeChange}
-        onLogout={onLogout}
+        onLogout={logout}
       />
 
       {/* Main Content */}

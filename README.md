@@ -1,36 +1,78 @@
-# DMS-360 - Document Management System
+# DMS-360: Document Management System
 
-A comprehensive document management system built with Next.js 15, MongoDB, and Google Drive integration. Features dynamic folder structures, secure file uploads, role-based access control, and advanced search capabilities.
+A modern, cloud-based document management system built with Next.js, Firebase, and Tailwind CSS.
 
 ## 🚀 Features
 
-- **Dynamic Folder Structure**: Create unlimited nested folders (curriculum → course → module → class → docs)
-- **Secure File Storage**: Files stored on Google Drive with metadata in MongoDB
-- **Role-Based Access Control**: Admin, Facilitator, and Employee roles
-- **Advanced Search**: Full-text search with tags and filters
-- **Drag & Drop Upload**: Modern file upload interface with progress tracking
-- **File Management**: View, download, and delete documents
-- **Responsive Design**: Modern UI built with Tailwind CSS
+- **Cloud Storage**: Firebase Storage for secure file storage
+- **Real-time Database**: Firestore for document metadata and user management
+- **User Authentication**: JWT-based authentication with role-based access control
+- **Document Management**: Upload, organize, and manage documents with versioning
+- **Folder Structure**: Hierarchical folder organization with permissions
+- **Tagging System**: Flexible tagging and categorization
+- **Search & Filter**: Advanced search and filtering capabilities
+- **Responsive Design**: Modern, mobile-friendly UI with Tailwind CSS
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 15 (App Router), React 18, Tailwind CSS
-- **Backend**: Next.js API Routes, Node.js
-- **Database**: MongoDB with Mongoose ODM
-- **File Storage**: Google Drive API
-- **Authentication**: JWT with HTTP-only cookies
-- **File Upload**: Formidable, React Dropzone
-- **Icons**: React Icons (Feather Icons)
-- **HTTP Client**: Axios
+### Backend
 
-## 📋 Prerequisites
+- **Next.js 15**: Full-stack React framework
+- **Firebase**:
+  - Firestore (NoSQL database)
+  - Firebase Storage (file storage)
+  - Firebase Authentication (optional)
+- **JWT**: JSON Web Tokens for authentication
+- **bcryptjs**: Password hashing
+
+### Frontend
+
+- **React 18**: UI library
+- **Tailwind CSS**: Utility-first CSS framework
+- **React Context**: State management
+- **React Hooks**: Functional components and state
+
+### Development
+
+- **TypeScript**: Type safety (optional)
+- **ESLint**: Code linting
+- **PostCSS**: CSS processing
+
+## 📁 Project Structure
+
+```
+src/
+├── app/                    # Next.js app directory
+│   ├── (auth)/            # Authentication pages
+│   ├── admin/             # Admin pages
+│   ├── api/               # API routes
+│   │   ├── auth/          # Authentication endpoints
+│   │   ├── documents/     # Document management
+│   │   ├── folders/       # Folder management
+│   │   └── tags/          # Tag management
+│   ├── dashboard/         # Main dashboard
+│   └── globals.css        # Global styles
+├── components/            # React components
+│   ├── features/          # Feature-specific components
+│   ├── layout/            # Layout components
+│   └── ui/                # Reusable UI components
+├── hooks/                 # Custom React hooks
+├── lib/                   # Utility libraries
+│   ├── firebase.js        # Firebase configuration
+│   ├── firestore.js       # Firestore services
+│   ├── firebaseUpload.js  # Firebase Storage service
+│   └── auth.js            # Authentication utilities
+├── store/                 # React Context providers
+└── types/                 # TypeScript type definitions
+```
+
+## 🔧 Setup & Installation
+
+### Prerequisites
 
 - Node.js 18+
-- MongoDB (local or cloud)
-- Google Cloud Platform account with Drive API enabled
-- Google Service Account with Drive API permissions
-
-## 🚀 Quick Start
+- npm or yarn
+- Firebase project
 
 ### 1. Clone the Repository
 
@@ -45,155 +87,187 @@ cd database-management-system
 npm install
 ```
 
-### 3. Environment Setup
+### 3. Environment Configuration
 
-Copy the example environment file and configure your variables:
-
-```bash
-cp env.example .env.local
-```
-
-Update `.env.local` with your configuration:
+Create a `.env.local` file in the root directory:
 
 ```env
-# MongoDB Configuration
-MONGODB_URI=mongodb://localhost:27017/dms-360
-
-# Google Drive API Configuration
-GOOGLE_DRIVE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
-GOOGLE_DRIVE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYour Private Key Here\n-----END PRIVATE KEY-----\n"
-GOOGLE_DRIVE_FOLDER_ID=your-google-drive-folder-id
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 # JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-here
-JWT_EXPIRES_IN=7d
+JWT_SECRET=your_jwt_secret_key
 
-# File Upload Configuration
-MAX_FILE_SIZE=100MB
-ALLOWED_FILE_TYPES=pdf,doc,docx,xls,xlsx,ppt,pptx,txt,jpg,jpeg,png,gif,mp4,avi,mov
+# Email Configuration (optional)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+
+# App Configuration
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your_nextauth_secret
 ```
 
-### 4. Google Drive Setup
+### 4. Firebase Setup
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing one
-3. Enable Google Drive API
-4. Create a Service Account
-5. Download the JSON key file
-6. Share your Google Drive folder with the service account email
-7. Update the environment variables with the service account details
+1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+2. Enable Firestore Database
+3. Enable Firebase Storage
+4. Configure security rules for both services
+5. Add your Firebase configuration to the environment variables
 
-### 5. Database Setup
+### 5. Firestore Security Rules
 
-Start MongoDB (if using local instance):
+```javascript
+// Firestore rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
 
-```bash
-# macOS with Homebrew
-brew services start mongodb-community
+    // Documents collection
+    match /documents/{documentId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
 
-# Ubuntu/Debian
-sudo systemctl start mongod
+    // Folders collection
+    match /folders/{folderId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
 
-# Windows
-net start MongoDB
+    // Tags collection
+    match /tags/{tagId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}
 ```
 
-### 6. Run the Application
+### 6. Firebase Storage Rules
+
+```javascript
+// Storage rules
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+### 7. Run the Application
 
 ```bash
 # Development
 npm run dev
 
-# Production
+# Production build
 npm run build
 npm start
 ```
 
-Visit `http://localhost:3000` to access the application.
+## 🔐 Authentication
 
-## 📁 Project Structure
+The system uses JWT-based authentication with the following features:
 
-```
-database-management-system/
-├── app/                    # Next.js 15 App Router
-│   ├── api/               # API Routes
-│   │   ├── auth/          # Authentication endpoints
-│   │   ├── documents/     # Document management
-│   │   └── folders/       # Folder management
-│   ├── dashboard/         # Main dashboard page
-│   ├── login/             # Login page
-│   ├── globals.css        # Global styles
-│   ├── layout.js          # Root layout
-│   └── page.js            # Home page
-├── components/            # React components
-│   ├── DocumentList.js    # Document display component
-│   ├── FolderTree.js      # Folder tree component
-│   ├── SearchBar.js       # Search functionality
-│   └── UploadModal.js     # File upload modal
-├── lib/                   # Utility libraries
-│   ├── auth.js           # Authentication utilities
-│   ├── database.js       # MongoDB connection
-│   └── googleDrive.js    # Google Drive integration
-├── models/               # Mongoose models
-│   ├── Document.js       # Document schema
-│   ├── Folder.js         # Folder schema
-│   └── User.js           # User schema
-├── public/               # Static assets
-├── .env.example          # Environment variables template
-├── next.config.js        # Next.js configuration
-├── package.json          # Dependencies and scripts
-├── postcss.config.js     # PostCSS configuration
-├── tailwind.config.js    # Tailwind CSS configuration
-└── README.md             # Project documentation
-```
+- **User Registration**: Email/password registration
+- **User Login**: Email/password authentication
+- **Role-based Access**: Admin, Facilitator, Employee roles
+- **Document Access Control**: Granular permissions per folder
+- **Session Management**: HTTP-only cookies for security
 
-## 🔐 Authentication & Authorization
+## 📄 Document Management
 
-The system uses JWT tokens stored in HTTP-only cookies for security. Three user roles are supported:
+### Features
 
-- **Admin**: Full access to all features
-- **Facilitator**: Can manage documents and folders
-- **Employee**: Can view and upload documents
+- **File Upload**: Support for various file types
+- **Version Control**: Document versioning with history
+- **Metadata Management**: Tags, descriptions, and categorization
+- **Search & Filter**: Full-text search and advanced filtering
+- **Access Control**: Folder-based permissions
 
-## 📤 File Upload Process
+### Supported File Types
 
-1. User selects files via drag & drop or file picker
-2. Files are validated for type and size
-3. Files are uploaded to Google Drive via service account
-4. Document metadata is stored in MongoDB
-5. User receives confirmation and can view/download files
+- Documents: PDF, DOC, DOCX, TXT
+- Spreadsheets: XLS, XLSX, CSV
+- Presentations: PPT, PPTX
+- Images: JPG, PNG, GIF, SVG
+- Archives: ZIP, RAR, 7Z
+- Audio/Video: MP3, MP4, AVI, MOV
+
+## 📁 Folder Management
+
+### Features
+
+- **Hierarchical Structure**: Nested folder organization
+- **Permission System**: User and role-based access control
+- **Breadcrumb Navigation**: Easy folder navigation
+- **Bulk Operations**: Multi-select and bulk actions
+
+## 🏷️ Tagging System
+
+### Features
+
+- **Flexible Tagging**: Add multiple tags to documents
+- **Tag Categories**: Organize tags by categories
+- **Search by Tags**: Filter documents by tags
+- **Tag Management**: Create, edit, and delete tags
 
 ## 🔍 Search & Filtering
 
-- Full-text search across document names and content
-- Filter by file type, upload date, and tags
-- Sort by name, date, or size
-- Pagination for large document collections
+### Search Capabilities
 
-## 🎨 UI Components
+- **Full-text Search**: Search document names, content, and tags
+- **Advanced Filters**: Filter by date, size, type, and tags
+- **Saved Searches**: Save and reuse search queries
+- **Search History**: Track recent searches
 
-- **Responsive Design**: Works on desktop, tablet, and mobile
-- **Modern Interface**: Clean, intuitive design with Tailwind CSS
-- **Loading States**: Smooth loading indicators and transitions
-- **Error Handling**: User-friendly error messages
-- **Accessibility**: WCAG compliant components
+## 👥 User Management
+
+### User Roles
+
+- **Admin**: Full system access and user management
+- **Facilitator**: Document management and user oversight
+- **Employee**: Basic document access and upload
+
+### Features
+
+- **User Registration**: Self-registration with admin approval
+- **Role Management**: Admin can assign and change user roles
+- **Access Control**: Granular permissions per folder
+- **User Profiles**: Manage user information and preferences
 
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
 
 1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
+2. Add environment variables in Vercel dashboard
 3. Deploy automatically on push to main branch
 
 ### Other Platforms
 
-The application can be deployed to any platform that supports Node.js:
+The application can be deployed to any platform that supports Next.js:
 
 - Netlify
-- Railway
-- DigitalOcean App Platform
-- AWS Elastic Beanstalk
+- AWS Amplify
+- Google Cloud Run
+- Docker containers
 
 ## 🔧 Development
 
@@ -204,14 +278,14 @@ npm run dev          # Start development server
 npm run build        # Build for production
 npm run start        # Start production server
 npm run lint         # Run ESLint
+npm run setup        # Initial setup
 ```
 
 ### Code Style
 
-- ESLint configuration included
-- Prettier formatting
-- Consistent component structure
-- Type-safe JavaScript practices
+- ESLint configuration for code quality
+- Prettier for code formatting
+- TypeScript for type safety (optional)
 
 ## 🤝 Contributing
 
@@ -229,15 +303,25 @@ This project is licensed under the MIT License.
 
 For support and questions:
 
-1. Check the documentation
-2. Search existing issues
-3. Create a new issue with detailed information
+- Create an issue in the GitHub repository
+- Check the documentation
+- Review the code examples
 
-## 🔄 Updates
+## 🔄 Migration from MongoDB
 
-Stay updated with the latest features and security patches by regularly pulling from the main branch.
+This project has been migrated from MongoDB/Mongoose to Firebase Firestore. Key changes:
 
----
+- **Database**: MongoDB → Firestore
+- **File Storage**: Google Drive → Firebase Storage
+- **Authentication**: Enhanced JWT with Firestore user verification
+- **Models**: Mongoose schemas → Firestore collections
+- **API Routes**: Updated to use Firestore services
+- **Frontend**: Updated to work with Firestore document structure
 
-**DMS-360** - Simplifying document management for modern organizations.
-# DMS-360
+### Migration Benefits
+
+- **Real-time Updates**: Firestore provides real-time data synchronization
+- **Scalability**: Automatic scaling with Firebase
+- **Security**: Built-in security rules and authentication
+- **Cost-effective**: Pay-as-you-go pricing model
+- **Integration**: Seamless integration with other Firebase services

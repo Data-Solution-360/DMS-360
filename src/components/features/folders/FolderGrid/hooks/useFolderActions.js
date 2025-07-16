@@ -12,7 +12,7 @@ export function useFolderActions({
 }) {
   const handleCreateFolder = (e) => {
     e.stopPropagation();
-    setSelectedParentId(selectedFolder?._id || null);
+    setSelectedParentId(selectedFolder?.id || null);
     setShowCreateModal(true);
   };
 
@@ -55,14 +55,14 @@ export function useFolderActions({
     }
 
     try {
-      const response = await fetch(`/api/folders?folderId=${folder._id}`, {
+      const response = await fetch(`/api/folders?folderId=${folder.id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
         await fetchFolders();
         // Clear selection if the deleted folder was selected
-        if (selectedFolder?._id === folder._id) {
+        if (selectedFolder?.id === folder.id) {
           onFolderSelect(null);
         }
       } else {
@@ -90,7 +90,7 @@ export function useFolderActions({
     }
 
     try {
-      const response = await fetch(`/api/documents/${document._id}`, {
+      const response = await fetch(`/api/documents/${document.id}`, {
         method: "DELETE",
       });
 

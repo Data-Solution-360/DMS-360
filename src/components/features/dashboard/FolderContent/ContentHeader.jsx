@@ -33,24 +33,29 @@ export default function ContentHeader({
         {/* Breadcrumb */}
         {currentPath.length > 0 && (
           <div className="flex items-center space-x-2 text-sm text-white/60">
-            {currentPath.map((pathItem, index) => (
-              <div key={pathItem.id} className="flex items-center">
-                <span
-                  className="hover:text-white/90 transition-colors cursor-pointer"
-                  onClick={() =>
-                    onNavigateToFolder({
-                      _id: pathItem.id,
-                      name: pathItem.name,
-                    })
-                  }
-                >
-                  {pathItem.name}
-                </span>
-                {index < currentPath.length - 1 && (
-                  <span className="mx-2 text-white/40">/</span>
-                )}
-              </div>
-            ))}
+            {currentPath.map(
+              (pathItem, index) => (
+                console.log(pathItem),
+                (
+                  <div key={pathItem.id} className="flex items-center">
+                    <span
+                      className="hover:text-white/90 transition-colors cursor-pointer"
+                      onClick={() =>
+                        onNavigateToFolder({
+                          id: pathItem.id,
+                          name: pathItem.name,
+                        })
+                      }
+                    >
+                      {pathItem.name}
+                    </span>
+                    {index < currentPath.length - 1 && (
+                      <span className="mx-2 text-white/40">/</span>
+                    )}
+                  </div>
+                )
+              )
+            )}
           </div>
         )}
 

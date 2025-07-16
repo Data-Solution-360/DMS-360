@@ -1,501 +1,289 @@
 "use client";
 
-import { collection, getDocs } from "firebase/firestore";
-import { useEffect, useRef, useState } from "react";
-import { useApi } from "../../../hooks/useApi";
-import { API_ENDPOINTS, UPLOAD_CONFIG } from "../../../lib/constants";
-import { db } from "../../../lib/firebase";
-import { uploadFileToFirebase } from "../../../lib/firebaseUpload";
-import { TagDisplay, TagSearch } from "../tags";
-
-// Icons (you can replace with actual icon components)
-const UploadIcon = () => (
-  <svg
-    className="w-6 h-6"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-    />
-  </svg>
-);
-
-const FileIcon = () => (
-  <svg
-    className="w-6 h-6"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-    />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M5 13l4 4L19 7"
-    />
-  </svg>
-);
-
-const XIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M6 18L18 6M6 6l12 12"
-    />
-  </svg>
-);
+import React, { useEffect, useState } from "react";
+import { FiAlertCircle, FiCheck, FiUpload, FiX } from "react-icons/fi";
 
 export default function DocumentUploadWithTags({
   folderId,
-  onClose,
   onUploadSuccess,
+  onCancel,
 }) {
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [availableTags, setAvailableTags] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
-  const [documentName, setDocumentName] = useState("");
-  const [documentDescription, setDocumentDescription] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [uploadStep, setUploadStep] = useState("file"); // file, details, uploading, success
-  const fileInputRef = useRef(null);
-  const { apiCall } = useApi();
+  const [uploadResults, setUploadResults] = useState([]);
 
   useEffect(() => {
-    async function fetchTestCollection() {
-      try {
-        const querySnapshot = await getDocs(collection(db, "testCollection"));
-        const docsArray = [];
-        querySnapshot.forEach((doc) => {
-          docsArray.push({ id: doc.id, ...doc.data() });
-        });
-        console.log("[Firestore] All documents in testCollection:", docsArray);
-      } catch (err) {
-        console.error("[Firestore] Failed to fetch testCollection:", err);
-      }
-    }
-    fetchTestCollection();
+    fetchAvailableTags();
   }, []);
 
-  const handleTagSelect = (tag) => {
-    if (!selectedTags.find((t) => t._id === tag._id)) {
-      setSelectedTags([...selectedTags, tag]);
+  const fetchAvailableTags = async () => {
+    try {
+      const response = await fetch("/api/tags");
+      const data = await response.json();
+      if (data.success) {
+        setAvailableTags(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching tags:", error);
     }
   };
 
-  const handleRemoveTag = (tagToRemove) => {
-    setSelectedTags(selectedTags.filter((tag) => tag._id !== tagToRemove._id));
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files).map((file) => ({
+      id: Date.now() + Math.random(),
+      file,
+      status: "pending",
+    }));
+    setSelectedFiles(files);
   };
 
-  const handleFileSelect = (file) => {
-    if (!file) return;
-
-    // Validate file size
-    if (file.size > UPLOAD_CONFIG.MAX_FILE_SIZE) {
-      alert(
-        `File size must be less than ${
-          UPLOAD_CONFIG.MAX_FILE_SIZE / (1024 * 1024)
-        }MB`
-      );
-      return;
-    }
-
-    // Validate file type
-    if (!UPLOAD_CONFIG.ALLOWED_TYPES.includes(file.type)) {
-      alert("File type not supported. Please select a valid file.");
-      return;
-    }
-
-    setSelectedFile(file);
-    setDocumentName(file.name.replace(/\.[^/.]+$/, "")); // Remove extension for name
-    setUploadStep("details");
+  const removeFile = (fileId) => {
+    setSelectedFiles((prev) => prev.filter((f) => f.id !== fileId));
   };
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
+  const toggleTag = (tag) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag.name)
+        ? prev.filter((t) => t !== tag.name)
+        : [...prev, tag.name]
+    );
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!documentName.trim()) {
-      alert("Please enter a document name");
-      return;
-    }
-
-    if (selectedTags.length === 0) {
-      alert("Please select at least one tag");
-      return;
-    }
-
-    if (!selectedFile) {
-      alert("Please select a file to upload");
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) {
+      alert("Please select files to upload");
       return;
     }
 
     setUploading(true);
-    setUploadStep("uploading");
-    setUploadProgress(0);
+    setUploadResults([]);
+
+    const uploadPromises = selectedFiles.map(async (fileObj) => {
+      try {
+        // Create FormData for the file upload
+        const formData = new FormData();
+        formData.append("file", fileObj.file);
+        formData.append("folderId", folderId || "");
+        formData.append("tags", JSON.stringify(selectedTags));
+        formData.append("description", ""); // Add description if needed
+
+        // Upload using the API endpoint
+        const response = await fetch("/api/documents/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          return {
+            fileId: fileObj.id,
+            fileName: fileObj.file.name,
+            status: "success",
+            data: data.data,
+          };
+        } else {
+          return {
+            fileId: fileObj.id,
+            fileName: fileObj.file.name,
+            status: "error",
+            error: data.error,
+          };
+        }
+      } catch (error) {
+        console.error("Upload error:", error);
+        return {
+          fileId: fileObj.id,
+          fileName: fileObj.file.name,
+          status: "error",
+          error: error.message,
+        };
+      }
+    });
 
     try {
-      // 1. Upload file to Firebase Storage
-      const path = `documents/${folderId || "root"}/${Date.now()}-${
-        selectedFile.name
-      }`;
-      const downloadURL = await uploadFileToFirebase(
-        selectedFile,
-        path,
-        setUploadProgress
-      );
+      const results = await Promise.all(uploadPromises);
+      setUploadResults(results);
 
-      // 2. Save metadata and downloadURL to MongoDB via backend
-      const response = await apiCall(API_ENDPOINTS.DOCUMENTS.UPLOAD, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: documentName,
-          description: documentDescription,
-          folderId,
-          tags: selectedTags.map((tag) => tag._id),
-          url: downloadURL,
-          fileType: selectedFile.type,
-          fileSize: selectedFile.size,
-        }),
-      });
+      const successfulUploads = results.filter((r) => r.status === "success");
 
-      if (response.success) {
-        setUploadStep("success");
-        setUploadProgress(100);
+      if (successfulUploads.length > 0 && onUploadSuccess) {
+        onUploadSuccess(successfulUploads);
+      }
 
-        // Call success callback
-        if (onUploadSuccess) {
-          onUploadSuccess();
-        }
-
-        // Auto close after 2 seconds
+      // Auto close after success if all uploads completed
+      if (successfulUploads.length === results.length) {
         setTimeout(() => {
-          if (onClose) {
-            onClose();
+          if (onCancel) {
+            onCancel();
           }
         }, 2000);
-      } else {
-        throw new Error(response.message || "Upload failed");
       }
     } catch (error) {
-      console.error("Upload error:", error);
-      alert("Failed to upload document. Please try again.");
-      setUploadStep("details");
-    } finally {
-      setUploading(false);
+      console.error("Upload failed:", error);
+    }
+
+    setUploading(false);
+  };
+
+  const getStatusIcon = (result) => {
+    if (!result) return <FiUpload className="text-gray-400" />;
+
+    switch (result.status) {
+      case "success":
+        return <FiCheck className="text-green-500" />;
+      case "error":
+        return <FiAlertCircle className="text-red-500" />;
+      default:
+        return <FiUpload className="text-gray-400" />;
     }
   };
 
-  const resetForm = () => {
-    setSelectedTags([]);
-    setDocumentName("");
-    setDocumentDescription("");
-    setSelectedFile(null);
-    setUploadStep("file");
-    setUploadProgress(0);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const getStatusText = (result) => {
+    if (!result) return "Pending";
+
+    switch (result.status) {
+      case "success":
+        return "Upload successful";
+      case "error":
+        return `Failed: ${result.error}`;
+      default:
+        return "Pending";
     }
   };
 
-  const goBack = () => {
-    if (uploadStep === "details") {
-      setUploadStep("file");
-      setSelectedFile(null);
-      setDocumentName("");
-      setDocumentDescription("");
-    }
-  };
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-lg">
+      <h2 className="text-xl font-semibold mb-4">Upload Documents</h2>
 
-  // File upload step
-  if (uploadStep === "file") {
-    return (
-      <div className="bg-transparent rounded-2xl p-8 max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UploadIcon />
-          </div>
-          <h2 className="text-3xl font-bold text-white mb-2">
-            Upload Document
-          </h2>
-          <p className="text-gray-300">
-            Select a file to upload to Google Drive and store in our database
-          </p>
-        </div>
-
-        <div
-          className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
-            dragActive
-              ? "border-blue-400 bg-blue-900/20"
-              : "border-gray-600 hover:border-gray-500"
-          }`}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-        >
-          <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileIcon />
-          </div>
-          <p className="text-lg font-medium text-gray-200 mb-2">
-            Drop your file here
-          </p>
-          <p className="text-gray-400 mb-4">
-            or click to browse from your computer
-          </p>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-          >
-            Choose File
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            onChange={(e) => handleFileSelect(e.target.files[0])}
-            accept={UPLOAD_CONFIG.ALLOWED_TYPES.join(",")}
-          />
-        </div>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-400">
-            Supported formats: PDF, Word, Excel, PowerPoint, Images, Videos,
-            Archives
-          </p>
-          <p className="text-sm text-gray-400">
-            Max file size: {UPLOAD_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB
-          </p>
-        </div>
+      {/* File Selection */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Select Files
+        </label>
+        <input
+          type="file"
+          multiple
+          onChange={handleFileSelect}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          disabled={uploading}
+        />
       </div>
-    );
-  }
 
-  // Document details step
-  if (uploadStep === "details") {
-    return (
-      <div className="bg-transparent rounded-2xl p-8 max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={goBack}
-              className="p-2 rounded-full hover:bg-gray-700 transition-colors text-gray-300"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-            </button>
-            <div>
-              <h2 className="text-2xl font-bold text-white">
-                Document Details
-              </h2>
-              <p className="text-gray-300">Add metadata and tags</p>
-            </div>
-          </div>
-        </div>
-
-        {/* File preview */}
-        <div className="bg-gray-700 border border-gray-600 rounded-xl p-4 mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center">
-              <FileIcon />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-gray-200">{selectedFile?.name}</p>
-              <p className="text-sm text-gray-400">
-                {(selectedFile?.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-semibold text-gray-200 mb-2">
-              Document Name *
-            </label>
-            <input
-              type="text"
-              value={documentName}
-              onChange={(e) => setDocumentName(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-600 bg-gray-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400"
-              placeholder="Enter document name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-200 mb-2">
-              Description
-            </label>
-            <textarea
-              value={documentDescription}
-              onChange={(e) => setDocumentDescription(e.target.value)}
-              rows="3"
-              className="w-full px-4 py-3 border border-gray-600 bg-gray-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400"
-              placeholder="Enter document description"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-200 mb-2">
-              Tags *
-            </label>
-            <TagSearch
-              onTagSelect={handleTagSelect}
-              placeholder="Search and select tags..."
-            />
-
-            {selectedTags.length > 0 && (
-              <div className="mt-3">
-                <label className="block text-sm font-medium text-gray-200 mb-2">
-                  Selected Tags:
-                </label>
-                <TagDisplay tags={selectedTags} onRemoveTag={handleRemoveTag} />
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              disabled={uploading}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              {uploading ? "Uploading..." : "Upload Document"}
-            </button>
-            <button
-              type="button"
-              onClick={resetForm}
-              disabled={uploading}
-              className="px-6 py-3 border border-gray-600 text-gray-300 rounded-xl font-medium hover:bg-gray-700 transition-all duration-200 disabled:opacity-50"
-            >
-              Reset
-            </button>
-            {onClose && (
+      {/* Tags Selection */}
+      {availableTags.length > 0 && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tags (Optional)
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {availableTags.map((tag) => (
               <button
-                type="button"
-                onClick={onClose}
+                key={tag.id}
+                onClick={() => toggleTag(tag)}
                 disabled={uploading}
-                className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-all duration-200 disabled:opacity-50"
+                className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                  selectedTags.includes(tag.name)
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                } ${uploading ? "opacity-50 cursor-not-allowed" : ""}`}
               >
-                Cancel
+                {tag.name}
               </button>
-            )}
-          </div>
-        </form>
-      </div>
-    );
-  }
-
-  // Uploading step
-  if (uploadStep === "uploading") {
-    return (
-      <div className="bg-transparent rounded-2xl p-8 max-w-2xl mx-auto">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-            <UploadIcon />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
-            Uploading to Cloud Storage
-          </h2>
-          <p className="text-gray-300 mb-6">
-            Please wait while we upload your document...
-          </p>
-
-          <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
-            <div
-              className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
-            ></div>
-          </div>
-          <p className="text-sm text-gray-400">{uploadProgress}% complete</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Success step
-  if (uploadStep === "success") {
-    return (
-      <div className="bg-transparent rounded-2xl p-8 max-w-2xl mx-auto">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckIcon />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
-            Upload Successful!
-          </h2>
-          <p className="text-gray-300 mb-6">
-            Your document has been uploaded and saved to our database.
-          </p>
-          <div className="bg-gray-700 border border-gray-600 rounded-xl p-4">
-            <p className="text-green-400 font-medium">{documentName}</p>
-            <p className="text-green-300 text-sm">Successfully uploaded</p>
+            ))}
           </div>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  return null;
+      {/* Selected Files List */}
+      {selectedFiles.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">
+            Selected Files ({selectedFiles.length})
+          </h3>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {selectedFiles.map((fileObj) => {
+              const result = uploadResults.find((r) => r.fileId === fileObj.id);
+              return (
+                <div
+                  key={fileObj.id}
+                  className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                >
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(result)}
+                    <span className="text-sm">{fileObj.file.name}</span>
+                    <span className="text-xs text-gray-500">
+                      ({Math.round(fileObj.file.size / 1024)} KB)
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {getStatusText(result)}
+                    </span>
+                    {!uploading && !result && (
+                      <button
+                        onClick={() => removeFile(fileObj.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <FiX size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Selected Tags Display */}
+      {selectedTags.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">
+            Selected Tags
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {selectedTags.map((tagName) => (
+              <span
+                key={tagName}
+                className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
+              >
+                {tagName}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex justify-end space-x-2">
+        <button
+          onClick={onCancel}
+          className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+          disabled={uploading}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleUpload}
+          disabled={selectedFiles.length === 0 || uploading}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+        >
+          {uploading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Uploading...
+            </>
+          ) : (
+            <>
+              <FiUpload className="mr-2" />
+              Upload Files
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
 }

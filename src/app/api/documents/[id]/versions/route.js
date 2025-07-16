@@ -1,41 +1,48 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "../../../../../lib/database";
-import { Document } from "../../../../../models/Document";
+import { requireAuth } from "../../../../../lib/auth.js";
+import { DocumentService } from "../../../../../lib/firestore.js";
 
-export async function GET(request, { params }) {
-  try {
-    await connectDB();
+// GET - Get document versions
+async function GET(request, { params }) {
+  return requireAuth(async (request) => {
+    try {
+      const { id } = params;
 
-    const { id } = params;
+      // Get the document
+      const document = await DocumentService.getDocumentById(id);
+      if (!document) {
+        return NextResponse.json(
+          { success: false, error: "Document not found" },
+          { status: 404 }
+        );
+      }
 
-    // Find the document and get its parent ID
-    const document = await Document.findById(id);
-    if (!document) {
+      // For now, return the current document as the only version
+      // In a full implementation, you would query for all versions
+      const versions = [
+        {
+          id: document.id,
+          version: document.version || 1,
+          name: document.name,
+          createdAt: document.createdAt,
+          createdBy: document.createdBy,
+          createdByName: document.createdByName,
+          isLatestVersion: document.isLatestVersion || true,
+        },
+      ];
+
+      return NextResponse.json({
+        success: true,
+        data: versions,
+      });
+    } catch (error) {
+      console.error("Get document versions error:", error);
       return NextResponse.json(
-        { error: "Document not found" },
-        { status: 404 }
+        { success: false, error: "Internal server error" },
+        { status: 500 }
       );
     }
-
-    // Get the parent document ID (either the document itself or its parent)
-    const parentId = document.parentDocumentId || document._id;
-
-    // Find all versions of this document
-    const versions = await Document.find({
-      $or: [{ _id: parentId }, { parentDocumentId: parentId }],
-    })
-      .populate("uploadedBy.userId", "name email")
-      .sort({ version: -1 });
-
-    return NextResponse.json({
-      success: true,
-      versions: versions,
-    });
-  } catch (error) {
-    console.error("Error fetching versions:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
-  }
+  })(request);
 }
+
+export { GET };

@@ -1,99 +1,57 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import mongoose from "mongoose";
 import { NextResponse } from "next/server";
-import { User } from "../../../../models/User.js";
+import { verifyFirebaseToken } from "../../../../lib/auth.js";
 
-// Inline database connection
-let connection = {};
-
-async function connectDB() {
-  if (connection.isConnected) {
-    return;
-  }
-
+// POST - Verify Firebase Auth token
+async function POST(request) {
   try {
-    const db = await mongoose.connect(process.env.MONGODB_URI);
-    connection.isConnected = db.connections[0].readyState;
-    console.log("MongoDB connected successfully");
-  } catch (error) {
-    console.error("MongoDB connection error:", error);
-    throw error;
-  }
-}
+    const { idToken } = await request.json();
 
-export async function POST(request) {
-  try {
-    await connectDB();
-
-    const { email, password } = await request.json();
-
-    if (!email || !password) {
+    if (!idToken) {
       return NextResponse.json(
-        { success: false, error: "Email and password are required" },
+        { success: false, error: "ID token is required" },
         { status: 400 }
       );
     }
 
-    const user = await User.findOne({ email });
+    // Verify the Firebase Auth token
+    const decodedToken = await verifyFirebaseToken(idToken);
 
-    console.log("user", user);
-    console.log("email", email);
-    console.log("password", password);
-
-    if (!user) {
+    if (!decodedToken) {
       return NextResponse.json(
-        { success: false, error: "Invalid credentials" },
+        { success: false, error: "Invalid token" },
         { status: 401 }
       );
     }
 
-    console.log("user.password", user.password);
-
-    // Use bcrypt directly to compare passwords
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    console.log("Password comparison result:", isPasswordValid);
-
-    if (!isPasswordValid) {
-      return NextResponse.json(
-        { success: false, error: "Invalid credentials" },
-        { status: 401 }
-      );
-    }
-
-    const token = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-    );
-
-    const userResponse = {
-      _id: user._id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      avatar: user.avatar,
-    };
-
+    // Create response with user data
     const response = NextResponse.json({
       success: true,
-      data: { user: userResponse, token },
+      user: {
+        id: decodedToken.user?.id || decodedToken.uid,
+        email: decodedToken.email,
+        name: decodedToken.name || decodedToken.user?.name,
+        role: decodedToken.user?.role || "employee",
+        hasDocumentAccess: decodedToken.user?.hasDocumentAccess || false,
+        firebaseUid: decodedToken.uid,
+      },
     });
 
-    // Set HTTP-only cookie
-    response.cookies.set("token", token, {
+    // Set Firebase token in HTTP-only cookie
+    response.cookies.set("firebaseToken", idToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
     return response;
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      { success: false, error: "Authentication failed" },
       { status: 500 }
     );
   }
 }
+
+export { POST };

@@ -226,3 +226,8 @@ export function validatePasswordChange(data) {
     errors,
   };
 }
+
+// Alias for backward compatibility
+export function validateRegister(data) {
+  return validateRegistration(data);
+}

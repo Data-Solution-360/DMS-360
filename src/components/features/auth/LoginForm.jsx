@@ -57,7 +57,7 @@ export default function LoginForm() {
     console.log("Attempting login...");
 
     try {
-      const result = await login(formData);
+      const result = await login(formData.email, formData.password);
       console.log("Login result:", result);
 
       if (!result.success) {
@@ -149,8 +149,8 @@ export default function LoginForm() {
               </div>
             )}
 
-            <div className="space-y-6">
-              <div>
+            <div className="space-y-6" suppressHydrationWarning={true}>
+              <div suppressHydrationWarning={true}>
                 <label className="block text-sm font-semibold text-white mb-2">
                   Email Address
                 </label>
@@ -175,7 +175,7 @@ export default function LoginForm() {
                 )}
               </div>
 
-              <div>
+              <div suppressHydrationWarning={true}>
                 <label className="block text-sm font-semibold text-white mb-2">
                   Password
                 </label>

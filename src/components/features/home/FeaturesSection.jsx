@@ -21,9 +21,9 @@ const features = [
   },
   {
     icon: "☁️",
-    title: "Google Drive Integration",
+    title: "Cloud Integration",
     description:
-      "Seamlessly sync with Google Drive, Dropbox, and other cloud services for unified file management.",
+      "Seamlessly sync with Cloud, Dropbox, and other cloud services for unified file management.",
     gradientFrom: "sky-400",
     gradientTo: "blue-600",
   },

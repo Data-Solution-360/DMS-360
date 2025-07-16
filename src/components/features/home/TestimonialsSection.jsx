@@ -35,7 +35,7 @@ export default function TestimonialsSection() {
       company: "InnovateCo",
       avatar: "👨‍🔬",
       rating: 5,
-      text: "The Google Drive integration is seamless. We can work with our existing files while enjoying DMS-360's advanced features.",
+      text: "The Cloud integration is seamless. We can work with our existing files while enjoying DMS-360's advanced features.",
       gradient: "from-amber-400 to-orange-500",
     },
   ];

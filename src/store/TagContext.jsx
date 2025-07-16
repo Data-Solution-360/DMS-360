@@ -51,7 +51,7 @@ const tagReducer = (state, action) => {
       return {
         ...state,
         tags: state.tags.map((tag) =>
-          tag._id === action.payload._id ? action.payload : tag
+          tag.id === action.payload.id ? action.payload : tag
         ),
         isLoading: false,
         error: null,
@@ -59,7 +59,7 @@ const tagReducer = (state, action) => {
     case TAG_ACTIONS.DELETE_TAG:
       return {
         ...state,
-        tags: state.tags.filter((tag) => tag._id !== action.payload),
+        tags: state.tags.filter((tag) => tag.id !== action.payload),
         selectedTags: state.selectedTags.filter(
           (tagId) => tagId !== action.payload
         ),

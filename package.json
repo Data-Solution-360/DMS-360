@@ -1,7 +1,7 @@
 {
   "name": "dms-360",
   "version": "1.0.0",
-  "description": "Document Management System with Google Drive integration",
+  "description": "Document Management System with Cloud",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,8 @@
     "lint": "next lint",
     "setup": "node setup.js",
     "init-db": "node scripts/init-db.js",
-    "create-admin": "node scripts/create-admin.js"
+    "create-admin": "node scripts/create-admin.js",
+    "migrate": "node scripts/migrate-to-firestore.js"
   },
   "dependencies": {
     "@tailwindcss/forms": "^0.5.10",
@@ -29,10 +30,9 @@
     "date-fns": "^3.3.0",
     "dotenv": "^16.4.0",
     "firebase": "^11.10.0",
+    "firebase-admin": "^13.4.0",
     "formidable": "^3.5.1",
-    "googleapis": "^133.0.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.5.0",
     "multer": "^1.4.5-lts.1",
     "next": "^15.0.0",
     "next-auth": "^4.24.11",

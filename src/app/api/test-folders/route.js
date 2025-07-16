@@ -7,7 +7,7 @@ export async function GET() {
     // Return some test data
     const testFolders = [
       {
-        _id: "test-folder-1",
+        id: "test-folder-1",
         name: "Test Folder 1",
         parentId: null,
         path: "test-folder-1",
@@ -17,7 +17,7 @@ export async function GET() {
         updatedAt: new Date(),
       },
       {
-        _id: "test-folder-2",
+        id: "test-folder-2",
         name: "Test Folder 2",
         parentId: null,
         path: "test-folder-2",
@@ -27,7 +27,7 @@ export async function GET() {
         updatedAt: new Date(),
       },
       {
-        _id: "test-subfolder-1",
+        id: "test-subfolder-1",
         name: "Subfolder 1",
         parentId: "test-folder-1",
         path: "test-folder-1/subfolder-1",
@@ -37,7 +37,7 @@ export async function GET() {
         updatedAt: new Date(),
       },
       {
-        _id: "test-subfolder-2",
+        id: "test-subfolder-2",
         name: "Subfolder 2",
         parentId: "test-folder-1",
         path: "test-folder-1/subfolder-2",

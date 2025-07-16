@@ -1,86 +1,151 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { auth } from "../lib/firebase";
 
 export function useApi() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const apiCall = useCallback(async (url, options = {}, onProgress) => {
-    setLoading(true);
-    setError(null);
+  // Helper function to get fresh ID token
+  const getFreshIdToken = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("No authenticated user");
+    }
 
-    try {
-      // Handle file uploads with progress tracking
-      if (options.body instanceof FormData) {
-        return new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
+    // Force refresh the ID token
+    return await user.getIdToken(true);
+  }, []);
 
-          xhr.upload.addEventListener("progress", (event) => {
-            if (event.lengthComputable && onProgress) {
-              const progress = Math.round((event.loaded / event.total) * 100);
-              onProgress(progress);
+  // Helper function to make API call with automatic token refresh
+  const makeApiCall = useCallback(
+    async (url, options = {}, retryCount = 0) => {
+      const maxRetries = 1; // Only retry once for token refresh
+
+      try {
+        const response = await fetch(url, {
+          ...options,
+          credentials: "include",
+        });
+
+        const data = await response.json();
+
+        // Check for token expiration error
+        if (!response.ok) {
+          if (
+            response.status === 401 &&
+            data.error?.includes("expired") &&
+            retryCount < maxRetries
+          ) {
+            console.log("[API] Token expired, refreshing...");
+
+            try {
+              // Get fresh token and update cookie
+              const freshToken = await getFreshIdToken();
+
+              // Update the server with fresh token
+              await fetch("/api/auth/refresh", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ idToken: freshToken }),
+                credentials: "include",
+              });
+
+              console.log("[API] Token refreshed, retrying request...");
+
+              // Retry the original request
+              return await makeApiCall(url, options, retryCount + 1);
+            } catch (refreshError) {
+              console.error("[API] Token refresh failed:", refreshError);
+              // Redirect to login or handle auth failure
+              window.location.href = "/login";
+              throw new Error("Authentication failed. Please login again.");
             }
-          });
-
-          xhr.addEventListener("load", () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const response = JSON.parse(xhr.responseText);
-                resolve(response);
-              } catch (error) {
-                reject(new Error("Invalid JSON response"));
-              }
-            } else {
-              reject(new Error(`Upload failed with status: ${xhr.status}`));
-            }
-          });
-
-          xhr.addEventListener("error", () => {
-            reject(new Error("Upload failed"));
-          });
-
-          xhr.open(options.method || "POST", url);
-
-          // Set headers except Content-Type for FormData
-          if (options.headers) {
-            Object.entries(options.headers).forEach(([key, value]) => {
-              if (key.toLowerCase() !== "content-type") {
-                xhr.setRequestHeader(key, value);
-              }
-            });
           }
 
-          xhr.send(options.body);
-        });
+          throw new Error(
+            data.message ||
+              data.error ||
+              `HTTP error! status: ${response.status}`
+          );
+        }
+
+        return data;
+      } catch (err) {
+        if (err.message?.includes("fetch")) {
+          throw new Error("Network error. Please check your connection.");
+        }
+        throw err;
       }
+    },
+    [getFreshIdToken]
+  );
 
-      // Regular API calls
-      const response = await fetch(url, {
-        headers: {
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
-        ...options,
-      });
+  const apiCall = useCallback(
+    async (url, options = {}, onProgress) => {
+      setLoading(true);
+      setError(null);
 
-      const data = await response.json();
+      try {
+        // Handle file uploads with progress tracking
+        if (options.body instanceof FormData) {
+          return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
 
-      if (!response.ok) {
-        throw new Error(
-          data.message || `HTTP error! status: ${response.status}`
-        );
+            xhr.upload.addEventListener("progress", (event) => {
+              if (event.lengthComputable && onProgress) {
+                const progress = Math.round((event.loaded / event.total) * 100);
+                onProgress(progress);
+              }
+            });
+
+            xhr.addEventListener("load", () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                  const response = JSON.parse(xhr.responseText);
+                  resolve(response);
+                } catch (e) {
+                  reject(new Error("Invalid JSON response"));
+                }
+              } else {
+                // Handle token expiration for file uploads
+                if (xhr.status === 401) {
+                  reject(
+                    new Error(
+                      "Authentication expired. Please refresh the page."
+                    )
+                  );
+                } else {
+                  reject(new Error(`Upload failed: ${xhr.status}`));
+                }
+              }
+            });
+
+            xhr.addEventListener("error", () => {
+              reject(new Error("Network error during upload"));
+            });
+
+            xhr.open(options.method || "POST", url);
+            xhr.withCredentials = true;
+            xhr.send(options.body);
+          });
+        }
+
+        // Handle regular API calls with automatic token refresh
+        return await makeApiCall(url, options);
+      } catch (err) {
+        const errorMessage = err.message || "An error occurred";
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setLoading(false);
       }
-
-      return data;
-    } catch (err) {
-      const errorMessage = err.message || "An error occurred";
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [makeApiCall]
+  );
 
   const clearError = useCallback(() => {
     setError(null);
@@ -135,6 +200,10 @@ export function useUpload() {
         });
 
         xhr.open("POST", url);
+
+        // Include credentials (cookies) for XMLHttpRequest
+        xhr.withCredentials = true;
+
         xhr.send(formData);
       });
     } catch (error) {
@@ -184,6 +253,7 @@ export function useSearch() {
       }
 
       const response = await fetch(searchUrl.toString(), {
+        credentials: "include", // Include cookies
         headers: {
           "Content-Type": "application/json",
           ...options.headers,

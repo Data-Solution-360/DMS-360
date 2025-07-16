@@ -56,10 +56,10 @@ const documentReducer = (state, action) => {
       return {
         ...state,
         documents: state.documents.map((doc) =>
-          doc._id === action.payload._id ? action.payload : doc
+          doc.id === action.payload.id ? action.payload : doc
         ),
         currentDocument:
-          state.currentDocument?._id === action.payload._id
+          state.currentDocument?.id === action.payload.id
             ? action.payload
             : state.currentDocument,
         isLoading: false,
@@ -68,9 +68,9 @@ const documentReducer = (state, action) => {
     case DOCUMENT_ACTIONS.DELETE_DOCUMENT:
       return {
         ...state,
-        documents: state.documents.filter((doc) => doc._id !== action.payload),
+        documents: state.documents.filter((doc) => doc.id !== action.payload),
         currentDocument:
-          state.currentDocument?._id === action.payload
+          state.currentDocument?.id === action.payload
             ? null
             : state.currentDocument,
         isLoading: false,
@@ -120,7 +120,9 @@ export const DocumentProvider = ({ children }) => {
       const url = folderId
         ? `/api/documents?folderId=${folderId}`
         : "/api/documents";
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        credentials: "include",
+      });
 
       if (response.ok) {
         const documents = await response.json();

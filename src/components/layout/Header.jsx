@@ -1,16 +1,88 @@
 "use client";
 
-import { useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { db } from "../../lib/firebase";
 import { useAuth } from "../../store";
 
 const Header = () => {
   const { user, logout } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  // Fetch full user profile from Firestore
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.uid) {
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userDocRef);
+
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setUserProfile({
+              uid: user.uid,
+              email: user.email,
+              name: userData.name || user.email?.split("@")[0] || "User",
+              role: userData.role || "user",
+              ...userData,
+            });
+          } else {
+            // Fallback if no document exists
+            setUserProfile({
+              uid: user.uid,
+              email: user.email,
+              name: user.email?.split("@")[0] || "User",
+              role: "user",
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+          // Fallback on error
+          setUserProfile({
+            uid: user.uid,
+            email: user.email,
+            name: user.email?.split("@")[0] || "User",
+            role: "user",
+          });
+        }
+      }
+      setLoading(false);
+    };
+
+    if (user) {
+      fetchUserProfile();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  console.log("Current user:", user);
+  console.log("User profile:", userProfile);
 
   const handleLogout = async () => {
     await logout();
     setIsUserMenuOpen(false);
+    setUserProfile(null);
+    router.push("/");
   };
+
+  // Get display name and role
+  const displayName =
+    userProfile?.name ||
+    user?.displayName ||
+    user?.email?.split("@")[0] ||
+    "User";
+  const userRole = userProfile?.role || "user";
+  const userInitials =
+    displayName
+      .split(" ")
+      .map((name) => name.charAt(0))
+      .join("")
+      .toUpperCase() || "U";
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -49,6 +121,15 @@ const Header = () => {
             >
               Tags
             </a>
+            {/* Show admin link if user has admin role */}
+            {userRole === "admin" && (
+              <a
+                href="/admin"
+                className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Admin
+              </a>
+            )}
           </nav>
 
           {/* User Menu */}
@@ -85,12 +166,17 @@ const Header = () => {
               >
                 <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
                   <span className="text-sm font-medium text-gray-700">
-                    {user?.name?.charAt(0) || "U"}
+                    {userInitials}
                   </span>
                 </div>
-                <span className="hidden md:block text-gray-700">
-                  {user?.name}
-                </span>
+                <div className="hidden md:block">
+                  <div className="text-gray-700 font-medium">{displayName}</div>
+                  {userRole && (
+                    <div className="text-xs text-gray-500 capitalize">
+                      {userRole}
+                    </div>
+                  )}
+                </div>
                 <svg
                   className="h-4 w-4 text-gray-400"
                   fill="none"
@@ -109,6 +195,15 @@ const Header = () => {
               {/* Dropdown Menu */}
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <div className="text-sm font-medium text-gray-700">
+                      {displayName}
+                    </div>
+                    <div className="text-xs text-gray-500">{user?.email}</div>
+                    <div className="text-xs text-blue-600 capitalize">
+                      {userRole}
+                    </div>
+                  </div>
                   <a
                     href="/profile"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -123,6 +218,15 @@ const Header = () => {
                   >
                     Settings
                   </a>
+                  {userRole === "admin" && (
+                    <a
+                      href="/admin"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      Admin Panel
+                    </a>
+                  )}
                   <hr className="my-1" />
                   <button
                     onClick={handleLogout}

@@ -65,7 +65,7 @@ export default function UploadModal({
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           <DocumentUploadWithTags
-            folderId={selectedFolder?._id}
+            folderId={selectedFolder?.id}
             onClose={onClose}
             onUploadSuccess={onUploadSuccess}
           />

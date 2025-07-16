@@ -30,7 +30,7 @@ export default function HeroSection({ onGetStarted, onLogin }) {
             collaborate on your documents with
             <span className="text-sky-300 font-semibold">
               {" "}
-              Google Drive integration
+              Cloud integration
             </span>{" "}
             and{" "}
             <span className="text-violet-300 font-semibold">
