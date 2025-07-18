@@ -1,9 +1,6 @@
 import { adminAuth } from "./firebase-admin.js";
 import { UserService } from "./firestore.js";
 
-// Remove or comment out console.log statements in production
-// Replace detailed logging with conditional logging:
-
 const DEBUG_AUTH = process.env.NODE_ENV === "development";
 
 // Verify Firebase Auth ID token using Firebase Admin SDK
@@ -16,23 +13,15 @@ export async function verifyFirebaseToken(idToken) {
     // Verify the ID token using Firebase Admin Auth
     const decodedToken = await adminAuth.verifyIdToken(idToken);
 
-    if (DEBUG_AUTH) {
-      console.log(`[Auth] Token verified for user: ${decodedToken.email}`);
-    }
-
     // Try to get user data from Firestore by Firebase UID first
     let user = await UserService.getUserByFirebaseUid(decodedToken.uid);
 
     // If not found by Firebase UID, try to find by email
     if (!user) {
-      console.log(
-        `[Auth] User not found by UID, searching by email: ${decodedToken.email}`
-      );
       user = await UserService.getUserByEmail(decodedToken.email);
 
       // If found by email, update the record with Firebase UID for future efficiency
       if (user) {
-        console.log(`[Auth] Found user by email, updating with Firebase UID`);
         await UserService.updateUser(user.id, {
           firebaseUid: decodedToken.uid,
         });
@@ -46,13 +35,6 @@ export async function verifyFirebaseToken(idToken) {
       );
       return null;
     }
-
-    console.log(`[Auth] User data loaded:`, {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    });
 
     // Return the complete user data from Firestore
     return {
@@ -103,6 +85,78 @@ export function requireAuth(handler) {
       return await handler(request);
     } catch (error) {
       console.error("Auth middleware error:", error);
+
+      let errorMessage = "Authentication failed";
+      let errorCode = "AUTH_FAILED";
+
+      if (error.message === "TOKEN_EXPIRED") {
+        errorMessage = "Authentication token has expired";
+        errorCode = "TOKEN_EXPIRED";
+      } else if (error.message === "TOKEN_REVOKED") {
+        errorMessage = "Authentication token has been revoked";
+        errorCode = "TOKEN_REVOKED";
+      } else if (error.message === "TOKEN_INVALID") {
+        errorMessage = "Invalid authentication token";
+        errorCode = "TOKEN_INVALID";
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: errorMessage,
+          code: errorCode,
+        }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+  };
+}
+
+// Middleware to require document access permission
+export function requireDocumentAccess(handler) {
+  return async (request) => {
+    try {
+      const token = request.cookies.get("firebaseToken")?.value;
+      const decoded = await verifyFirebaseToken(token);
+
+      if (!decoded || !decoded.user) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Authentication required",
+            code: "AUTH_REQUIRED",
+          }),
+          {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Check if user has document access or is admin
+      if (!decoded.user.hasDocumentAccess && decoded.user.role !== "admin") {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error:
+              "Document access permission required. Please contact an administrator.",
+            code: "DOCUMENT_ACCESS_DENIED",
+          }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Attach user data to request
+      request.user = decoded;
+      return await handler(request);
+    } catch (error) {
+      console.error("Document access middleware error:", error);
 
       let errorMessage = "Authentication failed";
       let errorCode = "AUTH_FAILED";

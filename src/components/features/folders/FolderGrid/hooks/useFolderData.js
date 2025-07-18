@@ -63,7 +63,6 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
 
         // For development, create some demo folders if auth fails
         if (response.status === 401 && process.env.NODE_ENV === "development") {
-          console.log("Auth error in development mode, creating demo folders");
           const demoFolders = [
             {
               id: "demo-folder-1",
@@ -96,7 +95,6 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
       console.error("Error fetching folders:", error);
       // For development, create demo folders if error
       if (process.env.NODE_ENV === "development") {
-        console.log("Error in development mode, creating demo folders");
         const demoFolders = [
           {
             id: "demo-folder-1",
@@ -132,16 +130,12 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
 
   const fetchDocuments = async () => {
     try {
-      console.log("Fetching documents for folder:", selectedFolder?.id);
-
       // Check if this is a test folder (starts with "test-" or "demo-")
       const isTestFolder =
         selectedFolder?.id?.startsWith("test-") ||
         selectedFolder?.id?.startsWith("demo-");
 
-      if (isTestFolder) {
-        console.log("Test folder detected, using demo documents");
-        // For test folders, create some demo documents
+      if (isTestFolder) {        // For test folders, create some demo documents
         const demoDocuments = [
           {
             id: `demo-doc-${selectedFolder.id}-1`,
@@ -192,17 +186,12 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
         url += `?folderId=${selectedFolder.id}`;
       }
 
-      console.log("Fetching documents from URL:", url);
-
       const response = await fetch(url, {
         credentials: "include", // Include cookies for authentication
       });
 
-      console.log("Documents response status:", response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log("Documents data:", data);
         setDocuments(data.data || []);
       } else {
         console.error("Failed to fetch documents:", response.status);
@@ -215,9 +204,6 @@ export function useFolderData(propFolders, selectedFolder, onFoldersUpdate) {
 
         // If it's an auth error and we're in development, create demo documents
         if (response.status === 401 && process.env.NODE_ENV === "development") {
-          console.log(
-            "Auth error in development mode, creating demo documents"
-          );
           setDocuments([]);
         } else {
           // For any other error, set empty array

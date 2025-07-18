@@ -11,9 +11,11 @@ import React, {
 } from "react";
 
 import {
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
 } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
@@ -129,7 +131,6 @@ export function AuthProvider({ children }) {
       });
 
       if (response.ok) {
-        console.log("[Auth] Token refreshed successfully");
         return freshToken;
       }
     } catch (error) {
@@ -145,7 +146,6 @@ export function AuthProvider({ children }) {
 
     // Refresh token every 50 minutes (before 1 hour expiry)
     const refreshInterval = setInterval(async () => {
-      console.log("[Auth] Refreshing token automatically...");
       await refreshToken();
     }, 50 * 60 * 1000); // 50 minutes
 
@@ -271,16 +271,36 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const register = useCallback(async (userData) => {
+  const register = useCallback(async (email, password, name) => {
     try {
       dispatch({ type: actionTypes.SET_LOADING, payload: true });
 
+      // First, create user with Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const firebaseUser = userCredential.user;
+
+      // Update the user's display name in Firebase
+      if (name) {
+        await updateProfile(firebaseUser, {
+          displayName: name,
+        });
+      }
+
+      // Now register the user in our database with the Firebase UID
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify({
+          email,
+          name,
+          firebaseUid: firebaseUser.uid,
+        }),
         credentials: "include",
       });
 
@@ -293,6 +313,16 @@ export function AuthProvider({ children }) {
         });
         return { success: true, user: data.user };
       } else {
+        // If registration API fails, delete the Firebase user to keep things consistent
+        try {
+          await firebaseUser.delete();
+        } catch (deleteError) {
+          console.error(
+            "Failed to delete Firebase user after registration failure:",
+            deleteError
+          );
+        }
+
         dispatch({
           type: actionTypes.REGISTER_ERROR,
           payload: { error: data.error },
@@ -301,11 +331,25 @@ export function AuthProvider({ children }) {
       }
     } catch (error) {
       console.error("Registration error:", error);
+
+      let errorMessage = "Registration failed";
+
+      // Handle Firebase Auth errors
+      if (error.code === "auth/email-already-in-use") {
+        errorMessage = "An account with this email already exists";
+      } else if (error.code === "auth/weak-password") {
+        errorMessage = "Password should be at least 6 characters";
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       dispatch({
         type: actionTypes.REGISTER_ERROR,
-        payload: { error: "Registration failed" },
+        payload: { error: errorMessage },
       });
-      return { success: false, error: "Registration failed" };
+      return { success: false, error: errorMessage };
     } finally {
       dispatch({ type: actionTypes.SET_LOADING, payload: false });
     }
@@ -331,6 +375,25 @@ export function AuthProvider({ children }) {
     dispatch({ type: actionTypes.CLEAR_ERROR });
   }, []);
 
+  // Add updateUserProfile function
+  const updateUserProfile = useCallback(async (displayName) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error("No authenticated user");
+      }
+
+      await updateProfile(user, {
+        displayName,
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Update profile error:", error);
+      return { success: false, error: error.message };
+    }
+  }, []);
+
   // Memoize the context value to prevent unnecessary re-renders
   const value = useMemo(
     () => ({
@@ -339,10 +402,20 @@ export function AuthProvider({ children }) {
       register,
       logout,
       clearError,
+      updateUserProfile,
       initialLoad,
       refreshToken, // Expose refresh function
     }),
-    [state, login, register, logout, clearError, initialLoad, refreshToken]
+    [
+      state,
+      login,
+      register,
+      logout,
+      clearError,
+      updateUserProfile,
+      initialLoad,
+      refreshToken,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

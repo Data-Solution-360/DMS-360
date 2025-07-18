@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useState } from "react";
 import { useApi } from "../../../../../hooks/useApi";
 import { API_ENDPOINTS } from "../../../../../lib/constants";

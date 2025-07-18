@@ -3,6 +3,7 @@
 // Temporary icon replacements
 const FiUpload = () => <span>📤</span>;
 const FiArrowLeft = () => <span>←</span>;
+const FiLock = () => <span>🔒</span>;
 
 export default function ContentHeader({
   currentFolder,
@@ -11,6 +12,7 @@ export default function ContentHeader({
   onNavigateBack,
   onNavigateToFolder,
   onUpload,
+  onMakePrivate,
 }) {
   return (
     <div className="flex items-center justify-between mb-6">
@@ -33,29 +35,24 @@ export default function ContentHeader({
         {/* Breadcrumb */}
         {currentPath.length > 0 && (
           <div className="flex items-center space-x-2 text-sm text-white/60">
-            {currentPath.map(
-              (pathItem, index) => (
-                console.log(pathItem),
-                (
-                  <div key={pathItem.id} className="flex items-center">
-                    <span
-                      className="hover:text-white/90 transition-colors cursor-pointer"
-                      onClick={() =>
-                        onNavigateToFolder({
-                          id: pathItem.id,
-                          name: pathItem.name,
-                        })
-                      }
-                    >
-                      {pathItem.name}
-                    </span>
-                    {index < currentPath.length - 1 && (
-                      <span className="mx-2 text-white/40">/</span>
-                    )}
-                  </div>
-                )
-              )
-            )}
+            {currentPath.map((pathItem, index) => (
+              <div key={pathItem.id} className="flex items-center">
+                <span
+                  className="hover:text-white/90 transition-colors cursor-pointer"
+                  onClick={() =>
+                    onNavigateToFolder({
+                      id: pathItem.id,
+                      name: pathItem.name,
+                    })
+                  }
+                >
+                  {pathItem.name}
+                </span>
+                {index < currentPath.length - 1 && (
+                  <span className="mx-2 text-white/40">/</span>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
@@ -64,13 +61,22 @@ export default function ContentHeader({
         </p>
       </div>
 
-      <button
-        onClick={onUpload}
-        className="group px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-lg hover:shadow-emerald-500/50"
-      >
-        <FiUpload className="inline-block mr-2 group-hover:scale-110 transition-transform duration-300" />
-        Upload Document
-      </button>
+      <div className="flex items-center space-x-3">
+        <button
+          onClick={onMakePrivate}
+          className="group px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-lg hover:shadow-red-500/50"
+        >
+          <FiLock className="inline-block mr-2 group-hover:scale-110 transition-transform duration-300" />
+          Make Private
+        </button>
+        <button
+          onClick={onUpload}
+          className="group px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 shadow-lg hover:shadow-emerald-500/50"
+        >
+          <FiUpload className="inline-block mr-2 group-hover:scale-110 transition-transform duration-300" />
+          Upload Document
+        </button>
+      </div>
     </div>
   );
 }

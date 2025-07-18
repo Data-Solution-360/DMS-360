@@ -2,7 +2,7 @@
 
 import axios from "axios";
 import { useEffect, useState } from "react";
-import CreateFolderModal from "./CreateFolderModal";
+import CreateFolderModal from "../dashboard/FolderSidebar/components/CreateFolderModal";
 // Temporary icon replacements
 const FiChevronDown = () => <span>▼</span>;
 const FiChevronRight = () => <span>▶</span>;
@@ -71,15 +71,6 @@ export default function FolderTree({
       const response = await axios.get("/api/folders");
 
       if (response.data.success) {
-        console.log(
-          "Frontend: Received folders:",
-          response.data.data.map((f) => ({
-            name: f.name,
-            id: f.id,
-            parentId: f.parentId,
-            level: f.level,
-          }))
-        );
         setFolders(response.data.data);
         // Notify parent component about the update
         if (onFoldersUpdate) {

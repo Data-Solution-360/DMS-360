@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { AccessControlModal } from "../";
-import CreateFolderModal from "../CreateFolderModal";
+import UploadModal from "../../dashboard/DocumentsUpload/UploadModal";
+import CreateFolderModal from "../../dashboard/FolderSidebar/components/CreateFolderModal";
 import FolderGridContent from "./FolderGridContent";
 import FolderGridEmpty from "./FolderGridEmpty";
 import FolderGridHeader from "./FolderGridHeader";
-import UploadModal from "./UploadModal";
 import { useFolderActions } from "./hooks/useFolderActions";
 import { useFolderData } from "./hooks/useFolderData";
 

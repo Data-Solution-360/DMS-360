@@ -61,6 +61,11 @@ const FolderItem = ({
             }`}
           >
             <FolderIcons.Folder className="h-4 w-4 text-white group-hover:scale-110 transition-transform duration-300" />
+            {folder.isRestricted && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">🔒</span>
+              </div>
+            )}
           </div>
 
           {/* Folder name */}

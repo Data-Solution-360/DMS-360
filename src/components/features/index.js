@@ -14,4 +14,7 @@ export * from "./folders";
 export * from "./tags";
 
 // Dashboard feature
-export * from "./dashboard/index.jsx";
+export * from "./dashboard";
+
+// Admin feature
+export * from "./admin";

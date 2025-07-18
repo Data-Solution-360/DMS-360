@@ -60,9 +60,6 @@ const Header = () => {
     }
   }, [user]);
 
-  console.log("Current user:", user);
-  console.log("User profile:", userProfile);
-
   const handleLogout = async () => {
     await logout();
     setIsUserMenuOpen(false);

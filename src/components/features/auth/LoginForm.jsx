@@ -20,7 +20,6 @@ export default function LoginForm() {
   // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      console.log("User is already authenticated, redirecting to dashboard");
       router.push("/dashboard");
     }
   }, [isAuthenticated, router]);
@@ -43,28 +42,21 @@ export default function LoginForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login form submitted with:", formData);
-
     // Validate form
     const validation = validateLogin(formData);
     if (!validation.isValid) {
-      console.log("Validation failed:", validation.errors);
       setErrors(validation.errors);
       return;
     }
 
     setIsSubmitting(true);
-    console.log("Attempting login...");
 
     try {
       const result = await login(formData.email, formData.password);
-      console.log("Login result:", result);
 
       if (!result.success) {
-        console.log("Login failed:", result.error);
         setErrors({ general: result.error });
       } else {
-        console.log("Login successful, should redirect to dashboard");
         // The AuthContext should handle the redirect automatically
         router.push("/dashboard");
       }

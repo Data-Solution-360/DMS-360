@@ -13,7 +13,6 @@ const formatDate = (dateString) => {
 };
 
 export default function FolderCard({ folder, stats, onDoubleClick }) {
-  // console.log(folder, stats);
   return (
     <div
       className="folder-card group relative bg-gradient-to-br from-white/10 to-white/5 p-6 rounded-3xl shadow-2xl hover:shadow-emerald-500/25 transition-all duration-500 transform hover:scale-105 hover:-translate-y-2 border border-white/20 backdrop-blur-xl overflow-hidden cursor-pointer"
@@ -27,10 +26,15 @@ export default function FolderCard({ folder, stats, onDoubleClick }) {
 
       <div className="relative z-10">
         {/* Folder icon */}
-        <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mb-4 shadow-2xl group-hover:shadow-emerald-500/50 transition-all duration-500 transform group-hover:scale-110 group-hover:rotate-3">
+        <div className="relative w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mb-4 shadow-2xl group-hover:shadow-emerald-500/50 transition-all duration-500 transform group-hover:scale-110 group-hover:rotate-3">
           <span className="text-3xl group-hover:scale-110 transition-transform duration-300">
             <FiFolder />
           </span>
+          {folder.isRestricted && (
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-white text-sm">🔒</span>
+            </div>
+          )}
         </div>
 
         {/* Folder info */}

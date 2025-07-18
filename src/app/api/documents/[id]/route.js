@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "../../../../lib/auth.js";
+import { requireDocumentAccess } from "../../../../lib/auth.js";
 import { firebaseUploadService } from "../../../../lib/firebaseUpload.js";
 import { DocumentService } from "../../../../lib/firestore.js";
 
 // GET - Get document by ID
 async function GET(request, { params }) {
-  return requireAuth(async (request) => {
+  return requireDocumentAccess(async (request) => {
     try {
       const { id } = params;
       const document = await DocumentService.getDocumentById(id);
@@ -14,6 +14,20 @@ async function GET(request, { params }) {
         return NextResponse.json(
           { success: false, error: "Document not found" },
           { status: 404 }
+        );
+      }
+
+      // Check if user has access to this document
+      const user = request.user.user;
+      const canAccess =
+        user.role === "admin" ||
+        user.hasDocumentAccess ||
+        document.createdBy === user.id;
+
+      if (!canAccess) {
+        return NextResponse.json(
+          { success: false, error: "Access denied" },
+          { status: 403 }
         );
       }
 
@@ -33,16 +47,42 @@ async function GET(request, { params }) {
 
 // PUT - Update document
 async function PUT(request, { params }) {
-  return requireAuth(async (request) => {
+  return requireDocumentAccess(async (request) => {
     try {
       const { id } = params;
       const updateData = await request.json();
 
-      const document = await DocumentService.updateDocument(id, updateData);
+      // Get document first to check ownership/access
+      const document = await DocumentService.getDocumentById(id);
+      if (!document) {
+        return NextResponse.json(
+          { success: false, error: "Document not found" },
+          { status: 404 }
+        );
+      }
+
+      // Check if user can modify this document
+      const user = request.user.user;
+      const canModify = user.role === "admin" || document.createdBy === user.id;
+
+      if (!canModify) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "You can only modify documents you created",
+          },
+          { status: 403 }
+        );
+      }
+
+      const updatedDocument = await DocumentService.updateDocument(
+        id,
+        updateData
+      );
 
       return NextResponse.json({
         success: true,
-        data: document,
+        data: updatedDocument,
       });
     } catch (error) {
       console.error("Update document error:", error);
@@ -56,16 +96,30 @@ async function PUT(request, { params }) {
 
 // DELETE - Delete document
 async function DELETE(request, { params }) {
-  return requireAuth(async (request) => {
+  return requireDocumentAccess(async (request) => {
     try {
       const { id } = params;
 
-      // Get document first to get storage path
+      // Get document first to get storage path and check ownership
       const document = await DocumentService.getDocumentById(id);
       if (!document) {
         return NextResponse.json(
           { success: false, error: "Document not found" },
           { status: 404 }
+        );
+      }
+
+      // Check if user can delete this document
+      const user = request.user.user;
+      const canDelete = user.role === "admin" || document.createdBy === user.id;
+
+      if (!canDelete) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "You can only delete documents you created",
+          },
+          { status: 403 }
         );
       }
 

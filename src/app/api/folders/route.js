@@ -9,6 +9,7 @@ async function GET(request) {
       const { searchParams } = new URL(request.url);
       const parentIdParam = searchParams.get("parentId");
       const tree = searchParams.get("tree") === "true";
+      const user = request.user.user;
 
       // Handle undefined/null string values properly
       let parentId = null;
@@ -20,23 +21,26 @@ async function GET(request) {
         parentId = parentIdParam;
       }
 
-      console.log("[Folders API] Request params:", {
-        parentIdParam,
-        parentId,
-        tree,
-      });
-
       let folders;
 
       if (tree) {
-        folders = await FolderService.getFolderTree(parentId);
+        // Get all accessible folders and build tree
+        const allAccessibleFolders = await FolderService.getFoldersByUserAccess(
+          user.id
+        );
+        folders = buildTreeFromFolders(allAccessibleFolders, parentId);
       } else if (parentId !== null) {
-        folders = await FolderService.getFoldersByParent(parentId);
+        // Get accessible folders by parent
+        const allAccessibleFolders = await FolderService.getFoldersByUserAccess(
+          user.id
+        );
+        folders = allAccessibleFolders.filter(
+          (folder) => folder.parentId === parentId
+        );
       } else {
-        folders = await FolderService.getAllFolders();
+        // Get all accessible folders
+        folders = await FolderService.getFoldersByUserAccess(user.id);
       }
-
-      console.log("[Folders API] Returning folders:", folders.length);
 
       return NextResponse.json({
         success: true,
@@ -52,6 +56,17 @@ async function GET(request) {
   })(request);
 }
 
+// Helper function to build tree from accessible folders
+function buildTreeFromFolders(folders, parentId = null) {
+  return folders
+    .filter((folder) => folder.parentId === parentId)
+    .map((folder) => ({
+      ...folder,
+      children: buildTreeFromFolders(folders, folder.id),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // POST - Create new folder
 async function POST(request) {
   return requireAuth(async (request) => {
@@ -60,11 +75,6 @@ async function POST(request) {
 
       const user = request.user.user;
       const userId = user.id;
-
-      console.log("[Folders API] Creating folder with user:", {
-        userId: userId,
-        folderData: folderData,
-      });
 
       // Simplified folder data structure
       const newFolder = {
@@ -79,8 +89,6 @@ async function POST(request) {
       };
 
       const folder = await FolderService.createFolder(newFolder);
-
-      console.log("[Folders API] Folder created successfully:", folder);
 
       return NextResponse.json({
         success: true,

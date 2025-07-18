@@ -1,5 +1,9 @@
 "use client";
 
+import { formatTimestamp } from "../../../../../lib/utils";
+import { useAuth } from "../../../../../store/AuthContext";
+import { VersionButton, VersionManager } from "../../../versions";
+
 // Temporary icon replacements
 const FiDownload = () => <span>📥</span>;
 const FiEye = () => <span>👁️</span>;
@@ -15,11 +19,7 @@ const formatFileSize = (bytes) => {
 };
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatTimestamp(dateString, "short");
 };
 
 const getFileIcon = (mimeType) => {
@@ -36,7 +36,15 @@ const getFileIcon = (mimeType) => {
   return "📄";
 };
 
-export default function DocumentList({ document, onAction }) {
+export default function DocumentList({ document, onAction, onVersionChange }) {
+  const { user } = useAuth();
+
+  const handleVersionChange = () => {
+    if (onVersionChange) {
+      onVersionChange();
+    }
+  };
+
   return (
     <div className="group relative flex items-center p-4 rounded-2xl bg-gradient-to-r from-white/5 to-white/10 hover:from-white/10 hover:to-white/15 transition-all duration-300 border border-white/10 hover:border-white/20">
       {/* Document icon */}
@@ -81,6 +89,18 @@ export default function DocumentList({ document, onAction }) {
         >
           <FiDownload className="h-4 w-4" />
         </button>
+
+        {/* Version Management Button */}
+        {user && (
+          <VersionManager
+            document={document}
+            userId={user.id}
+            onVersionChange={handleVersionChange}
+          >
+            <VersionButton document={document} variant="icon" />
+          </VersionManager>
+        )}
+
         <button
           onClick={() => onAction("more", document)}
           className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all duration-300"

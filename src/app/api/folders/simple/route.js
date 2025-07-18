@@ -6,7 +6,8 @@ import { FolderService } from "../../../../lib/firestore.js";
 async function GET(request) {
   return requireAuth(async (request) => {
     try {
-      const folders = await FolderService.getAllFolders();
+      const user = request.user.user;
+      const folders = await FolderService.getFoldersByUserAccess(user.id);
 
       // Return simplified folder data
       const simpleFolders = folders.map((folder) => ({

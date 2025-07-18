@@ -2,12 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap");
-
 @layer base {
   html {
-    font-family: "Poppins", "Inter", system-ui, sans-serif;
+    font-family: var(--font-poppins), var(--font-inter), system-ui, sans-serif;
   }
 
   body {
@@ -238,6 +235,77 @@
   }
 
   .folder-sidebar-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Modal Scrollbar Styles */
+  .modal-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(16, 185, 129, 0.6) rgba(255, 255, 255, 0.1);
+  }
+
+  .modal-scrollbar::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .modal-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin: 8px 0;
+  }
+
+  .modal-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #10b981, #14b8a6);
+    border-radius: 12px;
+    border: 2px solid rgba(31, 41, 55, 0.8);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  }
+
+  .modal-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #059669, #0d9488);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+    transform: scale(1.1);
+  }
+
+  .modal-scrollbar::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(135deg, #047857, #0f766e);
+  }
+
+  /* Modal Tree Scrollbar (smaller, more subtle) */
+  .modal-tree-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(16, 185, 129, 0.4) transparent;
+  }
+
+  .modal-tree-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .modal-tree-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 8px;
+  }
+
+  .modal-tree-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.4),
+      rgba(20, 184, 166, 0.4)
+    );
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .modal-tree-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.7),
+      rgba(20, 184, 166, 0.7)
+    );
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+  }
+
+  .modal-tree-scrollbar::-webkit-scrollbar-corner {
     background: transparent;
   }
 }
@@ -703,4 +771,65 @@
 
 .folder-double-click {
   animation: folderDoubleClick 0.2s ease-in-out;
+}
+
+/* Modal Scrollbar Styles - Greenish Theme */
+.modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #10b981 rgba(255, 255, 255, 0.1);
+}
+
+.modal-scrollbar::-webkit-scrollbar {
+  width: 12px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin: 4px 0;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+  transition: all 0.3s ease;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+  transform: scale(1.05);
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, #047857, #065f46);
+}
+
+/* Folder Tree Scrollbar - Smaller Greenish */
+.modal-tree-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(16, 185, 129, 0.6) transparent;
+}
+
+.modal-tree-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-tree-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.modal-tree-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #10b981, #14b8a6);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.modal-tree-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #059669, #0d9488);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
 }

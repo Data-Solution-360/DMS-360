@@ -7,29 +7,19 @@ const COLLECTIONS = {
   DOCUMENTS: "documents",
   FOLDERS: "folders",
   TAGS: "tags",
+  DEPARTMENTS: "departments", // Add this line
 };
 
 // User Service
 export class UserService {
   static async createUser(userData) {
     try {
-      console.log("[UserService] Creating user with data:", userData);
-      console.log("[UserService] Collection name:", COLLECTIONS.USERS);
-      console.log(
-        "[UserService] Database instance:",
-        adminDb ? "Available" : "Not available"
-      );
-
       const docRef = await adminDb.collection(COLLECTIONS.USERS).add({
         ...userData,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      console.log(
-        "[UserService] User created successfully with ID:",
-        docRef.id
-      );
       return { id: docRef.id, ...userData };
     } catch (error) {
       console.error("[UserService] Error creating user:", error);
@@ -106,23 +96,13 @@ export class UserService {
         const existingUser = await this.getUserByUid(uidString);
 
         if (!existingUser) {
-          console.log(
-            `[UserService] Generated unique UID: ${uidString} (attempt ${attempt})`
-          );
           return uidString;
         }
-
-        console.log(
-          `[UserService] UID ${uidString} already exists, trying again... (attempt ${attempt})`
-        );
       }
 
       // If we couldn't find a unique UID after maxAttempts, use timestamp-based fallback
       const timestamp = Date.now().toString();
       const fallbackUid = timestamp.slice(-6).padStart(6, "0");
-      console.log(
-        `[UserService] Using timestamp-based fallback UID: ${fallbackUid}`
-      );
       return fallbackUid;
     } catch (error) {
       console.error("Error generating unique UID:", error);
@@ -212,6 +192,74 @@ export class UserService {
 
 // Document Service
 export class DocumentService {
+  // Helper function to filter documents to show only the latest version of each document
+  static filterLatestVersions(documents) {
+    // Create a map to track document families
+    const documentFamilies = new Map();
+
+    // First, identify all documents that are parents (have versions pointing to them)
+    const parentIds = new Set();
+    documents.forEach((doc) => {
+      if (doc.parentDocumentId) {
+        parentIds.add(doc.parentDocumentId);
+      }
+    });
+
+    // Group documents by their family
+    documents.forEach((doc) => {
+      let familyId;
+
+      if (doc.parentDocumentId) {
+        // This is a version of another document
+        familyId = doc.parentDocumentId;
+      } else if (parentIds.has(doc.id)) {
+        // This is a parent document that has versions
+        familyId = doc.id;
+      } else {
+        // This is a standalone document
+        familyId = doc.id;
+      }
+
+      if (!documentFamilies.has(familyId)) {
+        documentFamilies.set(familyId, []);
+      }
+      documentFamilies.get(familyId).push(doc);
+    });
+
+    // For each family, find the latest version
+    const latestVersions = [];
+    documentFamilies.forEach((family, familyId) => {
+      family.forEach((doc) => {});
+
+      if (family.length === 1) {
+        // Single document (no versions)
+        latestVersions.push(family[0]);
+      } else {
+        // Multiple versions - find the highest version number
+        const latest = family.reduce((latest, current) => {
+          // Handle cases where version might not be set
+          const latestVersion =
+            parseInt(latest.version) || (latest.isLatestVersion ? 999 : 1);
+          const currentVersion =
+            parseInt(current.version) || (current.isLatestVersion ? 999 : 1);
+
+          // If one has isLatestVersion true and the other doesn't, prefer the one with true
+          if (current.isLatestVersion && !latest.isLatestVersion) {
+            return current;
+          }
+          if (!current.isLatestVersion && latest.isLatestVersion) {
+            return latest;
+          }
+
+          // Otherwise, use version number
+          return currentVersion > latestVersion ? current : latest;
+        });
+        latestVersions.push(latest);
+      }
+    });
+    return latestVersions;
+  }
+
   static async createDocument(documentData) {
     try {
       const docRef = await adminDb.collection(COLLECTIONS.DOCUMENTS).add({
@@ -219,7 +267,14 @@ export class DocumentService {
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
-      return { id: docRef.id, ...documentData };
+
+      // Return with proper timestamps
+      return {
+        id: docRef.id,
+        ...documentData,
+        createdAt: new Date().toISOString(), // Use current time for immediate display
+        updatedAt: new Date().toISOString(),
+      };
     } catch (error) {
       console.error("Error creating document:", error);
       throw error;
@@ -284,6 +339,9 @@ export class DocumentService {
         documents = documents.filter((doc) => doc.createdBy === userId);
       }
 
+      // Filter to show only the latest version of each document
+      documents = this.filterLatestVersions(documents);
+
       // Sort by createdAt in memory to avoid index requirement
       documents.sort((a, b) => {
         const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
@@ -313,6 +371,9 @@ export class DocumentService {
       if (userId) {
         documents = documents.filter((doc) => doc.createdBy === userId);
       }
+
+      // Filter to show only the latest version of each document
+      documents = this.filterLatestVersions(documents);
 
       // Sort by createdAt in memory to avoid index requirement
       documents.sort((a, b) => {
@@ -344,6 +405,222 @@ export class DocumentService {
       console.error("Error searching documents:", error);
       throw error;
     }
+  }
+
+  // Version Management Methods
+  static async getDocumentVersions(documentId) {
+    try {
+      // Get all documents with the same parentDocumentId
+      const snapshot = await adminDb
+        .collection(COLLECTIONS.DOCUMENTS)
+        .where("parentDocumentId", "==", documentId)
+        .get();
+
+      let versions = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Also include the original document if it exists
+      const originalDoc = await this.getDocumentById(documentId);
+      if (originalDoc) {
+        // Check if the original document is already in versions
+        const isAlreadyIncluded = versions.some((v) => v.id === documentId);
+        if (!isAlreadyIncluded) {
+          // Ensure the original document has version 1 and isLatestVersion set properly
+          const originalWithVersion = {
+            ...originalDoc,
+            version: originalDoc.version || 1,
+            isLatestVersion: originalDoc.isLatestVersion !== false, // Default to true if not set
+            parentDocumentId: originalDoc.parentDocumentId || documentId, // Ensure it has parentDocumentId
+          };
+          versions.push(originalWithVersion);
+        }
+      }
+
+      // Sort by version number (latest first)
+      versions.sort((a, b) => {
+        const versionA = parseInt(a.version) || 1;
+        const versionB = parseInt(b.version) || 1;
+        return versionB - versionA;
+      });
+
+      return versions;
+    } catch (error) {
+      console.error("Error getting document versions:", error);
+      throw error;
+    }
+  }
+
+  static async updateAllDocumentVersions(documentId, updateData) {
+    try {
+      // Get all versions of the document
+      const versions = await this.getDocumentVersions(documentId);
+
+      // Update each version
+      const updatePromises = versions.map(async (version) => {
+        try {
+          await this.updateDocument(version.id, updateData);
+        } catch (error) {
+          console.error(`Error updating version ${version.id}:`, error);
+        }
+      });
+
+      await Promise.allSettled(updatePromises);
+      return true;
+    } catch (error) {
+      console.error("Error updating all document versions:", error);
+      throw error;
+    }
+  }
+
+  static async getAllDocumentVersions(originalDocumentId) {
+    try {
+      // Get all documents where originalDocumentId matches
+      const versionsByOriginalId = await adminDb
+        .collection("documents")
+        .where("originalDocumentId", "==", originalDocumentId)
+        .get();
+
+      // Get the original document itself (in case it doesn't have originalDocumentId set)
+      const originalDoc = await adminDb
+        .collection("documents")
+        .doc(originalDocumentId)
+        .get();
+
+      const allVersions = [];
+
+      // Add documents from originalDocumentId query
+      versionsByOriginalId.forEach((doc) => {
+        allVersions.push({
+          id: doc.id,
+          ...doc.data(),
+        });
+      });
+
+      // Add the original document if it exists and isn't already included
+      if (
+        originalDoc.exists &&
+        !allVersions.find((v) => v.id === originalDoc.id)
+      ) {
+        allVersions.push({
+          id: originalDoc.id,
+          ...originalDoc.data(),
+        });
+      }
+
+      // Sort by version number (ascending)
+      allVersions.sort((a, b) => {
+        const versionA = parseInt(a.version) || 1;
+        const versionB = parseInt(b.version) || 1;
+        return versionA - versionB;
+      });
+
+      return allVersions;
+    } catch (error) {
+      console.error(
+        "[DocumentService] Error fetching all document versions:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  // New method to populate document data with related entities
+  static async populateDocumentData(documents) {
+    if (!Array.isArray(documents)) {
+      documents = [documents];
+    }
+
+    const populatedDocuments = await Promise.all(
+      documents.map(async (document) => {
+        const populated = { ...document };
+
+        // Populate user data if createdBy is an ID
+        if (document.createdBy && typeof document.createdBy === "string") {
+          try {
+            const user = await UserService.getUserById(document.createdBy);
+            if (user) {
+              populated.uploadedBy = {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+              };
+            }
+          } catch (error) {
+            console.error("Error populating user data:", error);
+            populated.uploadedBy = {
+              id: document.createdBy,
+              name: document.createdByName || "Unknown User",
+              email: document.createdByEmail || "unknown@example.com",
+            };
+          }
+        }
+
+        // Populate folder data if folderId is an ID
+        if (document.folderId && typeof document.folderId === "string") {
+          try {
+            const folder = await FolderService.getFolderById(document.folderId);
+            if (folder) {
+              populated.folderId = {
+                id: folder.id,
+                name: folder.name,
+              };
+            }
+          } catch (error) {
+            console.error("Error populating folder data:", error);
+            populated.folderId = {
+              id: document.folderId,
+              name: "Unknown Folder",
+            };
+          }
+        }
+
+        // Populate tags data if tags are IDs
+        if (document.tags && Array.isArray(document.tags)) {
+          try {
+            const tagPromises = document.tags.map(async (tag) => {
+              if (typeof tag === "string") {
+                // It's a tag ID, fetch the tag
+                const tagData = await TagService.getTagById(tag);
+                return tagData
+                  ? {
+                      id: tagData.id,
+                      displayName: tagData.displayName,
+                      name: tagData.name,
+                    }
+                  : { id: tag, displayName: "Unknown Tag" };
+              } else if (tag && typeof tag === "object" && tag.id) {
+                // It's already a tag object, just ensure it has displayName
+                return {
+                  id: tag.id,
+                  displayName: tag.displayName || tag.name || "Unknown Tag",
+                  name: tag.name,
+                };
+              } else {
+                // It's a string tag name (legacy)
+                return { id: tag, displayName: tag, name: tag };
+              }
+            });
+
+            populated.tags = await Promise.all(tagPromises);
+          } catch (error) {
+            console.error("Error populating tags data:", error);
+            populated.tags = document.tags.map((tag) =>
+              typeof tag === "string"
+                ? { id: tag, displayName: tag, name: tag }
+                : tag
+            );
+          }
+        }
+
+        return populated;
+      })
+    );
+
+    return Array.isArray(documents)
+      ? populatedDocuments
+      : populatedDocuments[0];
   }
 }
 
@@ -489,6 +766,100 @@ export class FolderService {
       throw error;
     }
   }
+
+  static async updateFolderAccessControl(folderId, accessControlData) {
+    try {
+      const docRef = adminDb.collection(COLLECTIONS.FOLDERS).doc(folderId);
+      await docRef.update({
+        ...accessControlData,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return { id: folderId, ...accessControlData };
+    } catch (error) {
+      console.error("Error updating folder access control:", error);
+      throw error;
+    }
+  }
+
+  static async updateChildFoldersAccessControl(parentId, accessControlData) {
+    try {
+      // Get all folders
+      const snapshot = await adminDb.collection(COLLECTIONS.FOLDERS).get();
+      const allFolders = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Find all child folders recursively
+      const findChildFolders = (parentId) => {
+        const children = allFolders.filter(
+          (folder) => folder.parentId === parentId
+        );
+        const allChildren = [...children];
+
+        children.forEach((child) => {
+          const grandChildren = findChildFolders(child.id);
+          allChildren.push(...grandChildren);
+        });
+
+        return allChildren;
+      };
+
+      const childFolders = findChildFolders(parentId);
+
+      // Update all child folders
+      const updatePromises = childFolders.map((folder) => {
+        const docRef = adminDb.collection(COLLECTIONS.FOLDERS).doc(folder.id);
+        return docRef.update({
+          ...accessControlData,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+
+      await Promise.all(updatePromises);
+      return childFolders.length;
+    } catch (error) {
+      console.error("Error updating child folders access control:", error);
+      throw error;
+    }
+  }
+
+  static async getFoldersByUserAccess(userId) {
+    try {
+      const snapshot = await adminDb.collection(COLLECTIONS.FOLDERS).get();
+      const allFolders = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Filter folders that the user has access to
+      const accessibleFolders = allFolders.filter((folder) => {
+        // If folder is not restricted, user has access
+        if (!folder.isRestricted) {
+          return true;
+        }
+
+        // If folder is restricted, check if user is in allowedUserIds
+        if (folder.allowedUserIds && Array.isArray(folder.allowedUserIds)) {
+          return folder.allowedUserIds.includes(userId);
+        }
+
+        // Check permissions array as fallback
+        if (folder.permissions && Array.isArray(folder.permissions)) {
+          return folder.permissions.some(
+            (permission) => permission.userId === userId
+          );
+        }
+
+        return false;
+      });
+
+      return accessibleFolders;
+    } catch (error) {
+      console.error("Error getting folders by user access:", error);
+      throw error;
+    }
+  }
 }
 
 // Tag Service
@@ -497,7 +868,6 @@ export class TagService {
     try {
       const docRef = await adminDb.collection(COLLECTIONS.TAGS).add({
         ...tagData,
-        name: tagData.name.toLowerCase(),
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -525,12 +895,13 @@ export class TagService {
 
   static async updateTag(tagId, updateData) {
     try {
-      const docRef = adminDb.collection(COLLECTIONS.TAGS).doc(tagId);
-      await docRef.update({
-        ...updateData,
-        name: updateData.name?.toLowerCase(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+      await adminDb
+        .collection(COLLECTIONS.TAGS)
+        .doc(tagId)
+        .update({
+          ...updateData,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
       return { id: tagId, ...updateData };
     } catch (error) {
       console.error("Error updating tag:", error);
@@ -540,8 +911,7 @@ export class TagService {
 
   static async deleteTag(tagId) {
     try {
-      const docRef = adminDb.collection(COLLECTIONS.TAGS).doc(tagId);
-      await docRef.delete();
+      await adminDb.collection(COLLECTIONS.TAGS).doc(tagId).delete();
       return true;
     } catch (error) {
       console.error("Error deleting tag:", error);
@@ -551,33 +921,28 @@ export class TagService {
 
   static async getAllTags() {
     try {
-      // Get all tags first, then filter and sort in memory to avoid index requirement
-      const snapshot = await adminDb.collection(COLLECTIONS.TAGS).get();
+      const snapshot = await adminDb
+        .collection(COLLECTIONS.TAGS)
+        .orderBy("displayName")
+        .get();
 
-      const allTags = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      // Filter active tags and sort by name
-      return allTags
-        .filter((tag) => tag.isActive === true)
-        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
       console.error("Error getting all tags:", error);
       throw error;
     }
   }
 
-  static async searchTags(searchTerm) {
+  static async searchTags(query) {
     try {
-      const tags = await this.getAllTags();
-      const searchLower = searchTerm.toLowerCase();
+      const snapshot = await adminDb.collection(COLLECTIONS.TAGS).get();
+      const tags = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
       return tags.filter(
         (tag) =>
-          tag.name?.toLowerCase().includes(searchLower) ||
-          tag.description?.toLowerCase().includes(searchLower)
+          tag.displayName.toLowerCase().includes(query.toLowerCase()) ||
+          tag.description.toLowerCase().includes(query.toLowerCase()) ||
+          tag.department.toLowerCase().includes(query.toLowerCase())
       );
     } catch (error) {
       console.error("Error searching tags:", error);
@@ -587,20 +952,191 @@ export class TagService {
 
   static async getTagsByCategory(category) {
     try {
-      // Get all tags first, then filter and sort in memory to avoid index requirement
-      const snapshot = await adminDb.collection(COLLECTIONS.TAGS).get();
+      const snapshot = await adminDb
+        .collection(COLLECTIONS.TAGS)
+        .where("category", "==", category)
+        .orderBy("displayName")
+        .get();
 
-      const allTags = snapshot.docs.map((doc) => ({
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error("Error getting tags by category:", error);
+      throw error;
+    }
+  }
+
+  static async getTagByName(name) {
+    try {
+      const snapshot = await adminDb
+        .collection(COLLECTIONS.TAGS)
+        .where("name", "==", name.toLowerCase())
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        return null;
+      }
+
+      const doc = snapshot.docs[0];
+      return { id: doc.id, ...doc.data() };
+    } catch (error) {
+      console.error("Error getting tag by name:", error);
+      throw error;
+    }
+  }
+
+  static async getTagsByDepartment(department) {
+    try {
+      const snapshot = await adminDb
+        .collection(COLLECTIONS.TAGS)
+        .where("department", "==", department)
+        .orderBy("displayName")
+        .get();
+
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error("Error getting tags by department:", error);
+      throw error;
+    }
+  }
+
+  static async getAllDepartments() {
+    try {
+      const snapshot = await adminDb.collection(COLLECTIONS.TAGS).get();
+      const departments = new Set();
+
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        if (data.department) {
+          departments.add(data.department);
+        }
+      });
+
+      return Array.from(departments).sort();
+    } catch (error) {
+      console.error("Error getting departments:", error);
+      throw error;
+    }
+  }
+
+  static async getTagsByDepartmentId(departmentId) {
+    try {
+      const snapshot = await adminDb
+        .collection(COLLECTIONS.TAGS)
+        .where("departmentId", "==", departmentId)
+        .orderBy("displayName")
+        .get();
+
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error("Error getting tags by department ID:", error);
+      throw error;
+    }
+  }
+}
+
+// Department Service
+export class DepartmentService {
+  static async createDepartment(departmentData) {
+    try {
+      const docRef = await adminDb.collection(COLLECTIONS.DEPARTMENTS).add({
+        ...departmentData,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return { id: docRef.id, ...departmentData };
+    } catch (error) {
+      console.error("Error creating department:", error);
+      throw error;
+    }
+  }
+
+  static async updateDepartment(departmentId, updateData) {
+    try {
+      await adminDb
+        .collection(COLLECTIONS.DEPARTMENTS)
+        .doc(departmentId)
+        .update({
+          ...updateData,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      return { id: departmentId, ...updateData };
+    } catch (error) {
+      console.error("Error updating department:", error);
+      throw error;
+    }
+  }
+
+  static async deleteDepartment(departmentId) {
+    try {
+      await adminDb
+        .collection(COLLECTIONS.DEPARTMENTS)
+        .doc(departmentId)
+        .delete();
+      return true;
+    } catch (error) {
+      console.error("Error deleting department:", error);
+      throw error;
+    }
+  }
+
+  static async getDepartmentByName(name) {
+    try {
+      const snapshot = await adminDb
+        .collection(COLLECTIONS.DEPARTMENTS)
+        .where("name", "==", name.trim())
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        return null;
+      }
+
+      const doc = snapshot.docs[0];
+      return { id: doc.id, ...doc.data() };
+    } catch (error) {
+      console.error("Error getting department by name:", error);
+      throw error;
+    }
+  }
+
+  static async getAllDepartments() {
+    try {
+      // Get all departments first, then filter and sort in memory to avoid index requirement
+      const snapshot = await adminDb.collection(COLLECTIONS.DEPARTMENTS).get();
+
+      let departments = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
 
-      // Filter by category and active status, then sort by name
-      return allTags
-        .filter((tag) => tag.category === category && tag.isActive === true)
-        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      // Filter by isActive in memory
+      departments = departments.filter((dept) => dept.isActive === true);
+
+      // Sort by name in memory
+      departments.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+      return departments;
     } catch (error) {
-      console.error("Error getting tags by category:", error);
+      console.error("Error getting all departments:", error);
+      throw error;
+    }
+  }
+
+  static async getDepartmentById(departmentId) {
+    try {
+      const doc = await adminDb
+        .collection(COLLECTIONS.DEPARTMENTS)
+        .doc(departmentId)
+        .get();
+
+      if (!doc.exists) {
+        return null;
+      }
+
+      return { id: doc.id, ...doc.data() };
+    } catch (error) {
+      console.error("Error getting department by ID:", error);
       throw error;
     }
   }

@@ -21,12 +21,9 @@ export const useFolderActions = (
   const navigateBack = useCallback(() => {
     // This would need to be implemented based on your path structure
     // For now, it's a placeholder
-    console.log("Navigate back clicked");
   }, []);
 
   const handleDocumentAction = useCallback((action, document) => {
-    console.log(`${action} clicked for document:`, document.originalName);
-    // Implement document actions here (download, delete, etc.)
   }, []);
 
   const handleFolderDoubleClick = useCallback(

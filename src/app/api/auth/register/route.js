@@ -1,16 +1,20 @@
-import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
-import { hashPassword } from "../../../../lib/auth.js";
 import { UserService } from "../../../../lib/firestore.js";
 
-// POST - User registration
+// POST - User registration for Firebase Auth
+// Note: This is typically called after Firebase Auth user creation
 async function POST(request) {
   try {
-    const { email, password, name, role = "employee" } = await request.json();
+    const {
+      email,
+      name,
+      role = "employee",
+      firebaseUid,
+    } = await request.json();
 
-    if (!email || !password || !name) {
+    if (!email || !name || !firebaseUid) {
       return NextResponse.json(
-        { success: false, error: "Email, password, and name are required" },
+        { success: false, error: "Email, name, and Firebase UID are required" },
         { status: 400 }
       );
     }
@@ -24,37 +28,23 @@ async function POST(request) {
       );
     }
 
-    // Hash password
-    const hashedPassword = await hashPassword(password);
-
-    // Generate unique 6-digit UID
+    // Generate unique 6-digit UID for internal reference
     const customUid = await UserService.generateUniqueUid();
 
-    // Create user
+    // Create user record in Firestore
     const userData = {
       uid: customUid, // Our custom 6-digit UID
+      firebaseUid, // Firebase Authentication UID
       email: email.toLowerCase(),
-      password: hashedPassword,
       name,
       role,
       hasDocumentAccess: false,
+      createdAt: new Date().toISOString(),
     };
 
     const user = await UserService.createUser(userData);
 
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    // Create response with token in cookie
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
       user: {
         id: user.id,
@@ -64,16 +54,6 @@ async function POST(request) {
         hasDocumentAccess: user.hasDocumentAccess,
       },
     });
-
-    // Set HTTP-only cookie
-    response.cookies.set("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    });
-
-    return response;
   } catch (error) {
     console.error("Registration error:", error);
     return NextResponse.json(

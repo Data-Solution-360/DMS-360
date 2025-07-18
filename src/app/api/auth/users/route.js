@@ -83,4 +83,72 @@ async function POST(request) {
   })(request);
 }
 
-export { GET, POST };
+// PATCH - Update user (admin only)
+async function PATCH(request) {
+  return requireRole(["admin"])(async (request) => {
+    try {
+      const { userId, ...updates } = await request.json();
+
+      if (!userId) {
+        return NextResponse.json(
+          { success: false, error: "User ID is required" },
+          { status: 400 }
+        );
+      }
+
+      // Validate allowed update fields
+      const allowedFields = ["role", "hasDocumentAccess", "name"];
+      const updateData = {};
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (allowedFields.includes(key)) {
+          updateData[key] = value;
+        }
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return NextResponse.json(
+          { success: false, error: "No valid fields to update" },
+          { status: 400 }
+        );
+      }
+
+      // Validate role if it's being updated
+      if (
+        updateData.role &&
+        !["employee", "facilitator", "admin"].includes(updateData.role)
+      ) {
+        return NextResponse.json(
+          { success: false, error: "Invalid role" },
+          { status: 400 }
+        );
+      }
+
+      // Update user
+      const updatedUser = await UserService.updateUser(userId, updateData);
+
+      if (!updatedUser) {
+        return NextResponse.json(
+          { success: false, error: "User not found" },
+          { status: 404 }
+        );
+      }
+
+      // Remove password from response
+      const { password, ...userWithoutPassword } = updatedUser;
+
+      return NextResponse.json({
+        success: true,
+        data: userWithoutPassword,
+      });
+    } catch (error) {
+      console.error("Update user error:", error);
+      return NextResponse.json(
+        { success: false, error: "Internal server error" },
+        { status: 500 }
+      );
+    }
+  })(request);
+}
+
+export { GET, PATCH, POST };

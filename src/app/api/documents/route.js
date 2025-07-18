@@ -1,38 +1,53 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "../../../lib/auth.js";
+import { requireDocumentAccess } from "../../../lib/auth.js";
 import { DocumentService } from "../../../lib/firestore.js";
 
 // GET - Get all documents
 async function GET(request) {
-  return requireAuth(async (request) => {
+  return requireDocumentAccess(async (request) => {
     try {
       const { searchParams } = new URL(request.url);
       const folderId = searchParams.get("folderId");
       const search = searchParams.get("search");
+      const originalDocumentId = searchParams.get("originalDocumentId");
 
       // Fix: Access user data from correct path
       const user = request.user.user;
       const userId = user.id;
 
-      console.log("[Documents API] Request params:", {
-        folderId,
-        search,
-        userId,
-      });
-
       let documents;
 
+      // Users with document access can see all documents
+      // Regular users can only see their own documents
+      const showAllDocuments = user.hasDocumentAccess || user.role === "admin";
+      const filterByUser = showAllDocuments ? null : userId;
+
       if (search) {
-        documents = await DocumentService.searchDocuments(search, userId);
+        documents = await DocumentService.searchDocuments(search, filterByUser);
       } else if (folderId && folderId !== "undefined" && folderId !== "null") {
         // Fix: Check for undefined/null string values
         documents = await DocumentService.getDocumentsByFolder(
           folderId,
-          userId
+          filterByUser
+        );
+      } else if (
+        originalDocumentId &&
+        originalDocumentId !== "undefined" &&
+        originalDocumentId !== "null"
+      ) {
+        // Fetch ALL versions for this originalDocumentId
+        // This should return all documents where:
+        // 1. originalDocumentId matches the param, OR
+        // 2. id matches the param (for the very first/original version)
+        documents = await DocumentService.getAllDocumentVersions(
+          originalDocumentId
         );
       } else {
-        documents = await DocumentService.getAllDocuments(userId);
+        documents = await DocumentService.getAllDocuments(filterByUser);
       }
+
+      // Get documents and populate related data
+      documents = await DocumentService.populateDocumentData(documents);
 
       // Calculate pagination info for compatibility
       const pagination = {
@@ -59,20 +74,13 @@ async function GET(request) {
 
 // POST - Create new document
 async function POST(request) {
-  return requireAuth(async (request) => {
+  return requireDocumentAccess(async (request) => {
     try {
       const documentData = await request.json();
 
       // Fix: Access user data from correct path
       const user = request.user.user;
       const userId = user.id;
-
-      console.log("[Documents API] Creating document with user:", {
-        userId: userId,
-        email: user.email,
-        name: user.name,
-        documentData: documentData,
-      });
 
       // Add user info to document
       const newDocument = {
@@ -83,8 +91,6 @@ async function POST(request) {
       };
 
       const document = await DocumentService.createDocument(newDocument);
-
-      console.log("[Documents API] Document created successfully:", document);
 
       return NextResponse.json({
         success: true,

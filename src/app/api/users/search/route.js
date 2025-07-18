@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireRole } from "../../../../lib/auth.js";
+import { requireAuth } from "../../../../lib/auth.js";
 import { UserService } from "../../../../lib/firestore.js";
 
 // GET - Search users
 async function GET(request) {
-  return requireRole(["admin"])(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const { searchParams } = new URL(request.url);
       const query = searchParams.get("q");

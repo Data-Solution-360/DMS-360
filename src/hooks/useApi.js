@@ -38,8 +38,6 @@ export function useApi() {
             data.error?.includes("expired") &&
             retryCount < maxRetries
           ) {
-            console.log("[API] Token expired, refreshing...");
-
             try {
               // Get fresh token and update cookie
               const freshToken = await getFreshIdToken();
@@ -53,8 +51,6 @@ export function useApi() {
                 body: JSON.stringify({ idToken: freshToken }),
                 credentials: "include",
               });
-
-              console.log("[API] Token refreshed, retrying request...");
 
               // Retry the original request
               return await makeApiCall(url, options, retryCount + 1);

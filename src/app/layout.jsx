@@ -1,5 +1,18 @@
+import { Inter, Poppins } from "next/font/google";
 import Providers from "../components/Providers";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-inter",
+});
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-poppins",
+});
 
 export const metadata = {
   title: "DMS-360 - Document Management System",
@@ -13,7 +26,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
       <body suppressHydrationWarning={true}>
         <Providers>{children}</Providers>
       </body>

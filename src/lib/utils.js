@@ -147,3 +147,91 @@ export function base64ToBytes(base64) {
   }
   return bytes;
 }
+
+/**
+ * Convert Firestore timestamp to JavaScript Date
+ * @param {Object|Date|string} timestamp - Firestore timestamp object or Date
+ * @returns {Date} JavaScript Date object
+ */
+export function convertFirestoreTimestamp(timestamp) {
+  if (!timestamp) return null;
+
+  // If it's already a Date object, return it
+  if (timestamp instanceof Date) return timestamp;
+
+  // If it's a string, try to parse it
+  if (typeof timestamp === "string") {
+    return new Date(timestamp);
+  }
+
+  // If it's a Firestore timestamp object with _seconds
+  if (timestamp && typeof timestamp === "object" && timestamp._seconds) {
+    return new Date(timestamp._seconds * 1000);
+  }
+
+  // If it's a Firestore timestamp object with toDate method
+  if (timestamp && typeof timestamp === "object" && timestamp.toDate) {
+    return timestamp.toDate();
+  }
+
+  // Fallback: try to create Date from the object
+  try {
+    return new Date(timestamp);
+  } catch (error) {
+    console.warn("Could not convert timestamp:", timestamp);
+    return null;
+  }
+}
+
+/**
+ * Format a timestamp for display
+ * @param {Object|Date|string} timestamp - Firestore timestamp or Date
+ * @param {string} format - Format type ('short', 'long', 'relative')
+ * @returns {string} Formatted date string
+ */
+export function formatTimestamp(timestamp, format = "short") {
+  const date = convertFirestoreTimestamp(timestamp);
+  if (!date) return "Unknown date";
+
+  switch (format) {
+    case "short":
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    case "long":
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    case "relative":
+      return getRelativeTimeString(date);
+    default:
+      return date.toLocaleDateString();
+  }
+}
+
+/**
+ * Get relative time string (e.g., "2 hours ago")
+ * @param {Date} date - Date to compare
+ * @returns {string} Relative time string
+ */
+function getRelativeTimeString(date) {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+
+  if (diffInSeconds < 60) return "Just now";
+  if (diffInSeconds < 3600)
+    return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400)
+    return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 2592000)
+    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  if (diffInSeconds < 31536000)
+    return `${Math.floor(diffInSeconds / 2592000)} months ago`;
+  return `${Math.floor(diffInSeconds / 31536000)} years ago`;
+}

@@ -35,8 +35,6 @@ if (!admin.apps.length) {
         storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
       });
     }
-
-    console.log("✅ Firebase Admin SDK initialized successfully");
   } catch (error) {
     console.error("❌ Firebase Admin SDK initialization error:", error);
     throw error;
