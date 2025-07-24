@@ -98,27 +98,6 @@ export default function Navbar({
             </div>
           </div>
 
-          {/* Desktop Navigation - Center Section */}
-          <div className="hidden lg:flex lg:items-center lg:flex-1 lg:justify-center lg:px-8">
-            {/* Search Bar */}
-            <div className="w-full max-w-md transform transition-all duration-300 hover:scale-105 animate-slide-in-bottom">
-              <div className="relative group">
-                <div className="relative flex items-center bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl hover:border-emerald-500/30">
-                  <div className="pl-4 pr-3">
-                    <FiSearch className="h-5 w-5 text-white/60" />
-                  </div>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    placeholder="Search documents..."
-                    className="flex-1 py-3 px-3 bg-transparent text-white placeholder-white/60 focus:outline-none text-sm font-medium"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Desktop Navigation - Right Section */}
           <div className="hidden lg:flex lg:items-center lg:space-x-4 flex-shrink-0">
             {/* Admin Actions */}
@@ -241,24 +220,6 @@ export default function Navbar({
         {isMobileMenuOpen && (
           <div className="lg:hidden border-t border-white/10 py-4 animate-slide-in-top">
             <div className="space-y-4">
-              {/* Search Bar */}
-              <div className="w-full">
-                <div className="relative group">
-                  <div className="relative flex items-center bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl">
-                    <div className="pl-4 pr-3">
-                      <FiSearch className="h-5 w-5 text-white/60" />
-                    </div>
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      placeholder="Search documents..."
-                      className="flex-1 py-3 px-3 bg-transparent text-white placeholder-white/60 focus:outline-none text-sm font-medium"
-                    />
-                  </div>
-                </div>
-              </div>
-
               {/* Navigation Links */}
               <div className="space-y-2">
                 <button

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatTimestamp } from "../../../../../lib/utils";
+
 // Temporary icon replacements
 const FiFolder = () => <span>📁</span>;
 
@@ -50,7 +52,7 @@ export default function FolderCard({ folder, stats, onDoubleClick }) {
 
             <div className="flex items-center justify-between text-xs text-white/60">
               <span>{stats?.total || 0} items</span>
-              <span>{formatDate(folder.createdAt)}</span>
+              <span>{formatTimestamp(folder.createdAt)}</span>
             </div>
 
             {/* Double-click hint */}

@@ -79,13 +79,18 @@ async function POST(request) {
       // Simplified folder data structure
       const newFolder = {
         ...folderData,
-        createdBy: userId, // Only store user ID
+        createdBy: userId,
         permissions: [
           {
             userId: userId,
-            grantedAt: new Date(), // Only store userId and grantedAt
+            permission: "admin", // Add permission level
+            grantedAt: new Date(),
+            grantedBy: userId,
           },
         ],
+        // Add these for better access control
+        isRestricted: false, // Allow general access unless specifically restricted
+        allowedUserIds: [userId], // Fallback access control
       };
 
       const folder = await FolderService.createFolder(newFolder);

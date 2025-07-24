@@ -3,56 +3,61 @@ import { requireAuth } from "../../../../lib/auth.js";
 import {
   DocumentService,
   FolderService,
-  TagService,
   UserService,
 } from "../../../../lib/firestore.js";
 
-// GET - Get dashboard statistics
-async function GET(request) {
+export async function GET(request) {
   return requireAuth(async (request) => {
     try {
-      // Get counts from all services
-      const users = await UserService.getAllUsers();
-      const documents = await DocumentService.getAllDocuments();
-      const folders = await FolderService.getAllFolders();
-      const tags = await TagService.getAllTags();
+      // Get basic counts in parallel
+      const [documents, folders, users, detailedStorage] = await Promise.all([
+        DocumentService.getAllDocuments(),
+        FolderService.getAllFolders(),
+        UserService.getAllUsers(),
+        DocumentService.getStorageStatsDetailed(),
+      ]);
 
-      // Calculate additional stats
-      const totalFileSize = documents.reduce(
-        (sum, doc) => sum + (doc.size || 0),
-        0
-      );
-      const activeDocuments = documents.filter(
-        (doc) => doc.isActive !== false
-      ).length;
-      const activeUsers = users.filter(
-        (user) => user.hasDocumentAccess !== false
-      ).length;
+      // Filter to latest versions for user-facing document count
+      const latestDocuments = DocumentService.filterLatestVersions(documents);
 
-      // Get recent activity (last 7 days)
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      const recentDocuments = documents.filter((doc) => {
-        const createdAt = doc.createdAt?.toDate
-          ? doc.createdAt.toDate()
-          : new Date(doc.createdAt);
-        return createdAt >= sevenDaysAgo;
-      });
+      // Calculate additional metrics
+      const activeUsers = users.filter((user) => user.hasDocumentAccess).length;
+      const totalVersions = documents.length;
+      const averageVersionsPerDocument =
+        latestDocuments.length > 0 ? totalVersions / latestDocuments.length : 0;
 
       const stats = {
-        totalUsers: users.length,
-        activeUsers: activeUsers,
-        totalDocuments: documents.length,
-        activeDocuments: activeDocuments,
+        // Basic counts (latest versions only for UI)
+        totalDocuments: latestDocuments.length,
         totalFolders: folders.length,
-        totalTags: tags.length,
-        totalFileSize: totalFileSize,
-        recentDocuments: recentDocuments.length,
-        averageFileSize:
-          documents.length > 0
-            ? Math.round(totalFileSize / documents.length)
-            : 0,
+        totalUsers: users.length,
+        activeUsers,
+
+        // Storage information (all versions)
+        storageUsed: detailedStorage.totalStorage,
+        totalVersions,
+        averageVersionsPerDocument:
+          Math.round(averageVersionsPerDocument * 100) / 100,
+        averageFileSize: detailedStorage.averageFileSize,
+
+        // Detailed breakdown
+        storageByType: detailedStorage.storageByType,
+        userStorage: detailedStorage.userStats,
+        orphanedFiles: detailedStorage.orphanedFiles,
+
+        // Additional metrics
+        storageUtilization: {
+          documentsWithVersions: latestDocuments.filter((doc) =>
+            documents.some(
+              (d) =>
+                d.parentDocumentId === doc.id || d.originalDocumentId === doc.id
+            )
+          ).length,
+          averageStoragePerUser:
+            users.length > 0 ? detailedStorage.totalStorage / users.length : 0,
+        },
+
+        lastUpdated: new Date().toISOString(),
       };
 
       return NextResponse.json({
@@ -60,13 +65,11 @@ async function GET(request) {
         data: stats,
       });
     } catch (error) {
-      console.error("Get stats error:", error);
+      console.error("Dashboard stats error:", error);
       return NextResponse.json(
-        { success: false, error: "Internal server error" },
+        { success: false, error: "Failed to fetch dashboard statistics" },
         { status: 500 }
       );
     }
   })(request);
 }
-
-export { GET };

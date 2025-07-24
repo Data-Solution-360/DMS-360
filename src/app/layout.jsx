@@ -1,4 +1,5 @@
 import { Inter, Poppins } from "next/font/google";
+import RouteGuard from "../components/auth/RouteGuard";
 import Providers from "../components/Providers";
 import "./globals.css";
 
@@ -26,9 +27,11 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
-      <body suppressHydrationWarning={true}>
-        <Providers>{children}</Providers>
+    <html lang="en">
+      <body className={inter.className}>
+        <Providers>
+          <RouteGuard>{children}</RouteGuard>
+        </Providers>
       </body>
     </html>
   );

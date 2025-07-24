@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import CreateFolderModal from "./components/CreateFolderModal";
+import DeleteFolderModal from "./components/DeleteFolderModal";
+import EditFolderModal from "./components/EditFolderModal";
 import FolderTree from "./components/FolderTree";
 import { useFolderSidebar } from "./hooks/useFolderSidebar";
 import { FOLDER_STYLES, FolderIcons } from "./utils/constants";
@@ -11,14 +13,19 @@ const FolderSidebar = ({
   onFolderSelect,
   selectedFolderId,
   onFolderCreated,
+  onFolderUpdated,
+  onFolderDeleted,
+  expandedFolders = new Set(), // New prop
+  setExpandedFolders, // New prop
+  highlightedFolderId = null, // New prop
 }) => {
   const {
-    expandedFolders,
+    expandedFolders: internalExpandedFolders,
     isCreatingFolder,
     newFolderName,
     selectedParentId,
     creating,
-    toggleFolder,
+    toggleFolder: hookToggleFolder, // Rename to avoid conflict
     expandParentFolders,
     openCreateModal,
     closeCreateModal,
@@ -27,12 +34,64 @@ const FolderSidebar = ({
     setSelectedParentId,
   } = useFolderSidebar(folders, onFolderCreated);
 
+  // Edit/Delete modal states
+  const [editingFolder, setEditingFolder] = useState(null);
+  const [deletingFolder, setDeletingFolder] = useState(null);
+
   const handleFolderSelect = useCallback(
     (folder) => {
       onFolderSelect(folder);
       expandParentFolders(folder.id);
     },
     [onFolderSelect, expandParentFolders]
+  );
+
+  const handleEditFolder = (folder) => {
+    setEditingFolder(folder);
+  };
+
+  const handleDeleteFolder = (folder) => {
+    setDeletingFolder(folder);
+  };
+
+  const handleFolderEdited = (folder, newName) => {
+    if (onFolderUpdated) {
+      onFolderUpdated({ ...folder, name: newName });
+    }
+    setEditingFolder(null);
+  };
+
+  const handleFolderDeleted = (folder) => {
+    if (onFolderDeleted) {
+      onFolderDeleted(folder);
+    }
+    setDeletingFolder(null);
+  };
+
+  // Use the external expandedFolders if provided, otherwise use internal
+  const currentExpandedFolders =
+    expandedFolders.size > 0 ? expandedFolders : internalExpandedFolders;
+
+  // Create a toggle function that uses external state if provided
+  const toggleFolder = useCallback(
+    (folderId) => {
+      if (setExpandedFolders) {
+        // Use external state
+        setExpandedFolders((prev) => {
+          const newSet = new Set(prev);
+          if (newSet.has(folderId)) {
+            newSet.delete(folderId);
+          } else {
+            newSet.add(folderId);
+          }
+          return newSet;
+        });
+      } else {
+        // Use internal hook function
+        hookToggleFolder(folderId);
+      }
+    },
+    [setExpandedFolders, hookToggleFolder]
   );
 
   return (
@@ -61,14 +120,18 @@ const FolderSidebar = ({
           ) : (
             <FolderTree
               folders={folders}
-              expandedFolders={expandedFolders}
+              expandedFolders={currentExpandedFolders}
               selectedFolderId={selectedFolderId}
+              highlightedFolderId={highlightedFolderId}
               onToggle={toggleFolder}
               onSelect={handleFolderSelect}
+              onEdit={handleEditFolder}
+              onDelete={handleDeleteFolder}
             />
           )}
         </div>
       </div>
+
       {/* Create folder modal */}
       <CreateFolderModal
         isOpen={isCreatingFolder}
@@ -80,6 +143,22 @@ const FolderSidebar = ({
         onCreate={createFolder}
         onNameChange={setNewFolderName}
         onParentSelect={setSelectedParentId}
+      />
+
+      {/* Edit folder modal */}
+      <EditFolderModal
+        isOpen={!!editingFolder}
+        folder={editingFolder}
+        onClose={() => setEditingFolder(null)}
+        onEdit={handleFolderEdited}
+      />
+
+      {/* Delete folder modal */}
+      <DeleteFolderModal
+        isOpen={!!deletingFolder}
+        folder={deletingFolder}
+        onClose={() => setDeletingFolder(null)}
+        onDelete={handleFolderDeleted}
       />
     </>
   );

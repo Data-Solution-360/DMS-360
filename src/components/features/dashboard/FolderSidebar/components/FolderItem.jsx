@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { FOLDER_ITEM_STYLES, FolderIcons } from "../utils/constants";
 import { getLevelPadding, hasChildren } from "../utils/helpers";
 
@@ -9,9 +9,24 @@ const FolderItem = ({
   isSelected,
   onToggle,
   onSelect,
+  onEdit,
+  onDelete,
   children,
 }) => {
+  const [showActions, setShowActions] = useState(false);
   const folderHasChildren = hasChildren(folder);
+
+  const handleEdit = (e) => {
+    e.stopPropagation();
+    setShowActions(false);
+    onEdit?.(folder);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    setShowActions(false);
+    onDelete?.(folder);
+  };
 
   return (
     <div className={FOLDER_ITEM_STYLES.container}>
@@ -21,6 +36,8 @@ const FolderItem = ({
         }`}
         style={{ paddingLeft: getLevelPadding(level) }}
         onClick={() => onSelect(folder)}
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
       >
         {/* Animated background gradient */}
         <div
@@ -62,8 +79,8 @@ const FolderItem = ({
           >
             <FolderIcons.Folder className="h-4 w-4 text-white group-hover:scale-110 transition-transform duration-300" />
             {folder.isRestricted && (
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">🔒</span>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm">🔓</span>
               </div>
             )}
           </div>
@@ -103,6 +120,26 @@ const FolderItem = ({
             >
               {folder.children.length}
             </span>
+          )}
+
+          {/* Actions menu */}
+          {showActions && onEdit && onDelete && (
+            <div className="ml-auto flex items-center space-x-1">
+              <button
+                onClick={handleEdit}
+                className="p-1 rounded hover:bg-white/10 transition-colors"
+                title="Edit folder"
+              >
+                <FolderIcons.Edit className="h-3 w-3 text-blue-400" />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="p-1 rounded hover:bg-white/10 transition-colors"
+                title="Delete folder"
+              >
+                <FolderIcons.Trash className="h-3 w-3 text-red-400" />
+              </button>
+            </div>
           )}
         </div>
 

@@ -19,10 +19,6 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
-const formatDate = (dateString) => {
-  return formatTimestamp(dateString, "short");
-};
-
 const getFileIcon = (mimeType) => {
   if (mimeType.includes("pdf")) return "📄";
   if (mimeType.includes("word") || mimeType.includes("document")) return "📝";

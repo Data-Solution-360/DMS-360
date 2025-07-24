@@ -622,6 +622,357 @@ export class DocumentService {
       ? populatedDocuments
       : populatedDocuments[0];
   }
+
+  static async advancedSearch({
+    query = "",
+    tags = [],
+    fileType = "",
+    userId = null,
+    isAdmin = false,
+    includePrivate = false,
+  }) {
+    try {
+      // Get all documents (filtered by user if not admin)
+      let documents = await this.getAllDocuments(userId);
+
+      // Filter to only show latest versions
+      documents = this.filterLatestVersions(documents);
+
+      // Apply privacy filter for non-admin users
+      if (!isAdmin) {
+        documents = documents.filter(
+          (doc) =>
+            !doc.isPrivate && !doc.isRestricted && doc.visibility !== "private"
+        );
+      }
+
+      const queryLower = query.toLowerCase();
+      const tagsLower = tags.map((tag) => tag.toLowerCase());
+
+      return documents.filter((doc) => {
+        let matches = true;
+
+        // Text search across multiple fields
+        if (query) {
+          const textMatch =
+            doc.originalName?.toLowerCase().includes(queryLower) ||
+            doc.name?.toLowerCase().includes(queryLower) ||
+            doc.title?.toLowerCase().includes(queryLower) ||
+            doc.description?.toLowerCase().includes(queryLower) ||
+            doc.content?.toLowerCase().includes(queryLower) ||
+            doc.tags?.some((tag) =>
+              (typeof tag === "string"
+                ? tag.toLowerCase()
+                : (tag.displayName || tag.name || "").toLowerCase()
+              ).includes(queryLower)
+            );
+
+          matches = matches && textMatch;
+        }
+
+        // Tag filter
+        if (tagsLower.length > 0) {
+          const tagMatch = doc.tags?.some((tag) =>
+            tagsLower.some((searchTag) =>
+              (typeof tag === "string"
+                ? tag.toLowerCase()
+                : (tag.displayName || tag.name || "").toLowerCase()
+              ).includes(searchTag)
+            )
+          );
+          matches = matches && tagMatch;
+        }
+
+        // File type filter
+        if (fileType) {
+          const typeMatch =
+            this.getFileType(doc.originalName || doc.name) ===
+            fileType.toLowerCase();
+          matches = matches && typeMatch;
+        }
+
+        return matches;
+      });
+    } catch (error) {
+      console.error("Error in advanced search:", error);
+      throw error;
+    }
+  }
+
+  static filterLatestVersions(documents) {
+    // Group documents by originalDocumentId or id (for original documents)
+    const documentGroups = {};
+
+    documents.forEach((doc) => {
+      const groupId = doc.originalDocumentId || doc.id;
+      if (!documentGroups[groupId]) {
+        documentGroups[groupId] = [];
+      }
+      documentGroups[groupId].push(doc);
+    });
+
+    // Return only the latest version from each group
+    return Object.values(documentGroups).map((group) => {
+      // Sort by version number and get the latest
+      return group.sort((a, b) => {
+        const versionA = parseInt(a.version) || 1;
+        const versionB = parseInt(b.version) || 1;
+        return versionB - versionA;
+      })[0];
+    });
+  }
+
+  static getFileType(filename) {
+    if (!filename) return "";
+
+    const extension = filename.split(".").pop()?.toLowerCase();
+
+    const typeMap = {
+      pdf: "pdf",
+      doc: "document",
+      docx: "document",
+      txt: "text",
+      xls: "spreadsheet",
+      xlsx: "spreadsheet",
+      csv: "spreadsheet",
+      ppt: "presentation",
+      pptx: "presentation",
+      jpg: "image",
+      jpeg: "image",
+      png: "image",
+      gif: "image",
+      mp4: "video",
+      avi: "video",
+      mov: "video",
+      zip: "archive",
+      rar: "archive",
+      "7z": "archive",
+    };
+
+    return typeMap[extension] || "other";
+  }
+
+  static async calculateTotalStorageUsed() {
+    try {
+      // Get ALL documents (including all versions) without any filtering
+      const snapshot = await adminDb.collection(COLLECTIONS.DOCUMENTS).get();
+
+      let totalStorage = 0;
+      let documentCount = 0;
+      const storageByType = {};
+
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const size = data.size || 0;
+        const mimeType = data.mimeType || "unknown";
+
+        totalStorage += size;
+        documentCount++;
+
+        // Track storage by file type
+        const fileType = this.getFileType(data.originalName || data.name);
+        if (!storageByType[fileType]) {
+          storageByType[fileType] = { size: 0, count: 0 };
+        }
+        storageByType[fileType].size += size;
+        storageByType[fileType].count++;
+      });
+
+      return {
+        totalStorage,
+        documentCount,
+        storageByType,
+        averageFileSize: documentCount > 0 ? totalStorage / documentCount : 0,
+      };
+    } catch (error) {
+      console.error("Error calculating total storage:", error);
+      throw error;
+    }
+  }
+
+  static async getStorageStatsByUser() {
+    try {
+      const snapshot = await adminDb.collection(COLLECTIONS.DOCUMENTS).get();
+      const userStorage = {};
+
+      // Collect all userIds
+      const userIds = Array.from(
+        new Set(
+          snapshot.docs.map((doc) => doc.data().createdBy).filter(Boolean)
+        )
+      );
+
+      // Batch fetch user data (Firestore 'in' queries support up to 10 at a time)
+      const userMap = {};
+      for (let i = 0; i < userIds.length; i += 10) {
+        const batchIds = userIds.slice(i, i + 10);
+        const userDocs = await adminDb
+          .collection(COLLECTIONS.USERS)
+          .where("__name__", "in", batchIds)
+          .get();
+        userDocs.forEach((doc) => {
+          userMap[doc.id] = doc.data();
+        });
+      }
+
+      // Now build the userStorage object
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const userId = data.createdBy;
+        const size = data.size || 0;
+
+        if (userId) {
+          if (!userStorage[userId]) {
+            const user = userMap[userId] || {};
+            userStorage[userId] = {
+              totalSize: 0,
+              documentCount: 0,
+              userName: user.name || data.createdByName || "Unknown User",
+              userEmail: user.email || data.createdByEmail || "",
+            };
+          }
+          userStorage[userId].totalSize += size;
+          userStorage[userId].documentCount++;
+        }
+      });
+
+      return userStorage;
+    } catch (error) {
+      console.error("Error getting storage stats by user:", error);
+      throw error;
+    }
+  }
+
+  static async getStorageStatsDetailed() {
+    try {
+      const [storageStats, userStats] = await Promise.all([
+        this.calculateTotalStorageUsed(),
+        this.getStorageStatsByUser(),
+      ]);
+
+      // Get orphaned files count (files without corresponding documents)
+      // This would require checking your Google Cloud Storage bucket
+      const orphanedFilesInfo = await this.detectOrphanedFiles();
+
+      return {
+        ...storageStats,
+        userStats,
+        orphanedFiles: orphanedFilesInfo,
+        lastCalculated: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error("Error getting detailed storage stats:", error);
+      throw error;
+    }
+  }
+
+  // Method to detect orphaned files (requires Google Cloud Storage admin setup)
+  static async detectOrphanedFiles() {
+    try {
+      // This would require Google Cloud Storage admin SDK
+      // For now, we'll return a placeholder
+      return {
+        count: 0,
+        estimatedSize: 0,
+        lastChecked: new Date().toISOString(),
+        note: "Orphaned file detection requires Google Cloud Storage API integration",
+      };
+    } catch (error) {
+      console.error("Error detecting orphaned files:", error);
+      return {
+        count: 0,
+        estimatedSize: 0,
+        error: error.message,
+      };
+    }
+  }
+
+  static async deleteDocumentWithStorage(documentId) {
+    try {
+      // Get the document first
+      const document = await this.getDocumentById(documentId);
+      if (!document) {
+        throw new Error("Document not found");
+      }
+
+      // Get all versions
+      const allVersions = await this.getAllDocumentVersions(
+        document.originalDocumentId || documentId
+      );
+
+      const results = {
+        deletedDocuments: 0,
+        deletedFiles: 0,
+        errors: [],
+      };
+
+      // Delete each version and its files
+      for (const version of allVersions) {
+        try {
+          // Delete from Firestore
+          await this.deleteDocument(version.id);
+          results.deletedDocuments++;
+
+          // Delete files from storage
+          const { CloudStorageService } = await import("./storage.js");
+
+          if (version.filePath) {
+            try {
+              await CloudStorageService.deleteFile(version.filePath);
+              results.deletedFiles++;
+            } catch (error) {
+              results.errors.push(
+                `Failed to delete file ${version.filePath}: ${error.message}`
+              );
+            }
+          }
+
+          if (version.thumbnailPath) {
+            try {
+              await CloudStorageService.deleteFile(version.thumbnailPath);
+              results.deletedFiles++;
+            } catch (error) {
+              results.errors.push(
+                `Failed to delete thumbnail ${version.thumbnailPath}: ${error.message}`
+              );
+            }
+          }
+        } catch (error) {
+          results.errors.push(
+            `Failed to delete version ${version.id}: ${error.message}`
+          );
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error("Error in deleteDocumentWithStorage:", error);
+      throw error;
+    }
+  }
+
+  static async bulkDeleteDocuments(documentIds) {
+    const results = {
+      totalDocuments: 0,
+      totalFiles: 0,
+      errors: [],
+    };
+
+    for (const documentId of documentIds) {
+      try {
+        const deleteResult = await this.deleteDocumentWithStorage(documentId);
+        results.totalDocuments += deleteResult.deletedDocuments;
+        results.totalFiles += deleteResult.deletedFiles;
+        results.errors.push(...deleteResult.errors);
+      } catch (error) {
+        results.errors.push(
+          `Failed to delete document ${documentId}: ${error.message}`
+        );
+      }
+    }
+
+    return results;
+  }
 }
 
 // Folder Service

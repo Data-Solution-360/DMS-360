@@ -119,9 +119,11 @@ export default function RegisterForm() {
           <div className="mb-6">
             <div className="relative inline-block">
               <div className="absolute inset-0 bg-gradient-to-r from-sky-500 to-blue-500 rounded-xl blur-lg opacity-50"></div>
-              <h1 className="relative text-4xl font-black bg-gradient-to-r from-sky-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
-                DMS-360
-              </h1>
+              <Link href="/">
+                <h1 className="relative text-4xl font-black bg-gradient-to-r from-sky-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
+                  DMS-360
+                </h1>
+              </Link>
             </div>
           </div>
 

@@ -1,21 +1,25 @@
 "use client";
 
+import ProtectedRoute from "../../components/auth/ProtectedRoute";
 import {
   DashboardContent,
   DashboardLayout,
 } from "../../components/features/dashboard";
 import { useAuth } from "../../store";
 
-export default function DashboardPage(props) {
+export default function DashboardPage() {
   const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
+    // The logout function now handles redirection automatically
   };
 
   return (
-    <DashboardLayout user={user} onLogout={handleLogout}>
-      <DashboardContent user={user} />
-    </DashboardLayout>
+    <ProtectedRoute redirectTo="/login">
+      <DashboardLayout user={user} onLogout={handleLogout}>
+        <DashboardContent user={user} />
+      </DashboardLayout>
+    </ProtectedRoute>
   );
 }

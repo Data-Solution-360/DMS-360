@@ -357,16 +357,33 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
+      // Call logout API
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });
+
+      // Sign out from Firebase
       await signOut(auth);
+
+      // Update auth state
       dispatch({ type: actionTypes.LOGOUT });
+
+      // Redirect to home page after logout
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
+
       return { success: true };
     } catch (error) {
       console.error("Logout error:", error);
       dispatch({ type: actionTypes.LOGOUT });
+
+      // Even if logout fails, redirect to home
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
+
       return { success: false, error: "Logout failed" };
     }
   }, []);
