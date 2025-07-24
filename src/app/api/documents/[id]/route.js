@@ -95,7 +95,7 @@ async function PUT(request, { params }) {
 }
 
 // DELETE - Delete document and its file from storage
-export async function DELETE(request, { params }) {
+async function DELETE(request, { params }) {
   return requireDocumentAccess(async (request) => {
     try {
       const documentId = params.id;
