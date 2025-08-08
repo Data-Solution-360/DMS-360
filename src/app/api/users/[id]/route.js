@@ -1,6 +1,8 @@
+import { requireAuth } from "@/lib/auth.js";
+import { adminAuth, adminDb } from "@/lib/firebase-admin.js";
+import { UserService } from "@/lib/services/index.js";
+import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { requireAuth } from "../../../../lib/auth.js";
-import { UserService } from "../../../../lib/services/index.js";
 
 // GET - Get user by ID
 async function GET(request, { params }) {
@@ -40,10 +42,6 @@ async function GET(request, { params }) {
     }
   })(request);
 }
-
-// src/app/api/admin/users/[id]/route.js
-import { FieldValue } from "firebase-admin/firestore";
-import { adminAuth, adminDb } from "../../../../../lib/firebase-admin.js";
 
 // PUT - Update user (unchanged)...
 
@@ -121,6 +119,4 @@ async function DELETE(request, { params }) {
   })(request);
 }
 
-export { DELETE, PUT };
-
-export { GET };
+export { DELETE, GET };
