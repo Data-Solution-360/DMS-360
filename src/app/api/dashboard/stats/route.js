@@ -4,7 +4,7 @@ import {
   DocumentService,
   FolderService,
   UserService,
-} from "../../../../lib/firestore.js";
+} from "../../../../lib/services/index.js";
 
 export async function GET(request) {
   return requireAuth(async (request) => {

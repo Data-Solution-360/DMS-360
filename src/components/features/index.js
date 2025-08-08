@@ -4,9 +4,6 @@ export * from "./auth";
 // Home feature
 export * from "./home";
 
-// Folders feature
-export * from "./folders";
-
 // Tags feature
 export * from "./tags";
 

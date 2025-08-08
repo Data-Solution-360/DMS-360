@@ -1,4 +1,5 @@
 import { Storage } from "@google-cloud/storage";
+import { DocumentService } from "./services/index.js";
 
 class CloudStorageService {
   constructor() {

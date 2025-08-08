@@ -7,15 +7,27 @@ export function useApi() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Helper function to get fresh ID token
+  // Helper function to get fresh ID token with fallback
   const getFreshIdToken = useCallback(async () => {
     const user = auth.currentUser;
     if (!user) {
-      throw new Error("No authenticated user");
+      throw new Error("Authentication required");
     }
 
-    // Force refresh the ID token
-    return await user.getIdToken(true);
+    try {
+      // Try to get a fresh token
+      return await user.getIdToken(true);
+    } catch (error) {
+      console.warn("Failed to refresh token:", error);
+
+      // If quota exceeded or other Firebase errors, try to get the current token
+      try {
+        return await user.getIdToken(false); // Don't force refresh
+      } catch (fallbackError) {
+        console.error("Failed to get token:", fallbackError);
+        throw new Error("Authentication required");
+      }
+    }
   }, []);
 
   // Helper function to make API call with automatic token refresh
@@ -24,18 +36,42 @@ export function useApi() {
       const maxRetries = 1; // Only retry once for token refresh
 
       try {
+        // Get the current user's ID token
+        const idToken = await getFreshIdToken();
+
         const response = await fetch(url, {
           ...options,
+          headers: {
+            ...options.headers,
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type":
+              options.headers?.["Content-Type"] || "application/json",
+          },
           credentials: "include",
         });
 
-        const data = await response.json();
+        // Add better error handling for JSON parsing
+        let data;
+        try {
+          const responseText = await response.text();
+          if (!responseText) {
+            throw new Error("Empty response from server");
+          }
+          data = JSON.parse(responseText);
+        } catch (jsonError) {
+          if (jsonError instanceof SyntaxError) {
+            console.error("Invalid JSON response:", responseText);
+            throw new Error("Invalid response format from server");
+          }
+          throw jsonError;
+        }
 
         // Check for token expiration error
         if (!response.ok) {
           if (
             response.status === 401 &&
-            data.error?.includes("expired") &&
+            (data.error?.includes("expired") ||
+              data.error?.includes("invalid")) &&
             retryCount < maxRetries
           ) {
             try {
@@ -47,6 +83,7 @@ export function useApi() {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
+                  Authorization: `Bearer ${freshToken}`,
                 },
                 body: JSON.stringify({ idToken: freshToken }),
                 credentials: "include",
@@ -56,8 +93,7 @@ export function useApi() {
               return await makeApiCall(url, options, retryCount + 1);
             } catch (refreshError) {
               console.error("[API] Token refresh failed:", refreshError);
-              // Redirect to login or handle auth failure
-              window.location.href = "/login";
+              // Don't redirect automatically, let the component handle it
               throw new Error("Authentication failed. Please login again.");
             }
           }
@@ -71,6 +107,10 @@ export function useApi() {
 
         return data;
       } catch (err) {
+        if (err.message?.includes("Authentication required")) {
+          // Don't redirect automatically, let the component handle it
+          throw new Error("Authentication required. Please login.");
+        }
         if (err.message?.includes("fetch")) {
           throw new Error("Network error. Please check your connection.");
         }
@@ -88,45 +128,58 @@ export function useApi() {
       try {
         // Handle file uploads with progress tracking
         if (options.body instanceof FormData) {
-          return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
+          return new Promise(async (resolve, reject) => {
+            try {
+              // Get the current user's ID token
+              const idToken = await getFreshIdToken();
 
-            xhr.upload.addEventListener("progress", (event) => {
-              if (event.lengthComputable && onProgress) {
-                const progress = Math.round((event.loaded / event.total) * 100);
-                onProgress(progress);
-              }
-            });
+              const xhr = new XMLHttpRequest();
 
-            xhr.addEventListener("load", () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  const response = JSON.parse(xhr.responseText);
-                  resolve(response);
-                } catch (e) {
-                  reject(new Error("Invalid JSON response"));
-                }
-              } else {
-                // Handle token expiration for file uploads
-                if (xhr.status === 401) {
-                  reject(
-                    new Error(
-                      "Authentication expired. Please refresh the page."
-                    )
+              xhr.upload.addEventListener("progress", (event) => {
+                if (event.lengthComputable && onProgress) {
+                  const progress = Math.round(
+                    (event.loaded / event.total) * 100
                   );
-                } else {
-                  reject(new Error(`Upload failed: ${xhr.status}`));
+                  onProgress(progress);
                 }
-              }
-            });
+              });
 
-            xhr.addEventListener("error", () => {
-              reject(new Error("Network error during upload"));
-            });
+              xhr.addEventListener("load", () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                  try {
+                    const response = JSON.parse(xhr.responseText);
+                    resolve(response);
+                  } catch (e) {
+                    reject(new Error("Invalid JSON response"));
+                  }
+                } else {
+                  // Handle token expiration for file uploads
+                  if (xhr.status === 401) {
+                    reject(
+                      new Error(
+                        "Authentication expired. Please refresh the page."
+                      )
+                    );
+                  } else {
+                    reject(new Error(`Upload failed: ${xhr.status}`));
+                  }
+                }
+              });
 
-            xhr.open(options.method || "POST", url);
-            xhr.withCredentials = true;
-            xhr.send(options.body);
+              xhr.addEventListener("error", () => {
+                reject(new Error("Network error during upload"));
+              });
+
+              xhr.open(options.method || "POST", url);
+              xhr.withCredentials = true;
+
+              // Set authorization header
+              xhr.setRequestHeader("Authorization", `Bearer ${idToken}`);
+
+              xhr.send(options.body);
+            } catch (error) {
+              reject(error);
+            }
           });
         }
 
@@ -140,7 +193,7 @@ export function useApi() {
         setLoading(false);
       }
     },
-    [makeApiCall]
+    [makeApiCall, getFreshIdToken]
   );
 
   const clearError = useCallback(() => {
@@ -169,45 +222,66 @@ export function useUpload() {
     try {
       const xhr = new XMLHttpRequest();
 
-      return new Promise((resolve, reject) => {
-        xhr.upload.addEventListener("progress", (event) => {
-          if (event.lengthComputable) {
-            const progress = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress(progress);
-            if (onProgress) onProgress(progress);
+      return new Promise(async (resolve, reject) => {
+        try {
+          // Get the current user's ID token with fallback
+          const user = auth.currentUser;
+          if (!user) {
+            throw new Error("Authentication required");
           }
-        });
 
-        xhr.addEventListener("load", () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.responseText);
-              resolve(response);
-            } catch (error) {
-              reject(new Error("Invalid JSON response"));
+          let idToken;
+          try {
+            idToken = await user.getIdToken(true); // Try to refresh
+          } catch (error) {
+            console.warn(
+              "Failed to refresh token, using current token:",
+              error
+            );
+            idToken = await user.getIdToken(false); // Use current token
+          }
+
+          xhr.upload.addEventListener("progress", (event) => {
+            if (event.lengthComputable) {
+              const progress = Math.round((event.loaded / event.total) * 100);
+              setUploadProgress(progress);
+              if (onProgress) onProgress(progress);
             }
-          } else {
-            reject(new Error(`Upload failed with status: ${xhr.status}`));
-          }
-        });
+          });
 
-        xhr.addEventListener("error", () => {
-          reject(new Error("Upload failed"));
-        });
+          xhr.addEventListener("load", () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const response = JSON.parse(xhr.responseText);
+                resolve(response);
+              } catch (error) {
+                reject(new Error("Invalid JSON response"));
+              }
+            } else {
+              reject(new Error(`Upload failed with status: ${xhr.status}`));
+            }
+          });
 
-        xhr.open("POST", url);
+          xhr.addEventListener("error", () => {
+            reject(new Error("Upload failed"));
+          });
 
-        // Include credentials (cookies) for XMLHttpRequest
-        xhr.withCredentials = true;
+          xhr.open("POST", url);
+          xhr.withCredentials = true;
 
-        xhr.send(formData);
+          // Set authorization header
+          xhr.setRequestHeader("Authorization", `Bearer ${idToken}`);
+
+          xhr.send(formData);
+        } catch (error) {
+          reject(error);
+        }
       });
     } catch (error) {
       setUploadError(error.message);
       throw error;
     } finally {
       setUploading(false);
-      setUploadProgress(0);
     }
   }, []);
 

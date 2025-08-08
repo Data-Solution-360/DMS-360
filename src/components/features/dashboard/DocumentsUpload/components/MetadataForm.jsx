@@ -18,14 +18,14 @@ export default function MetadataForm({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-300 mb-4">
+      <label className="block text-sm font-medium text-gray-900 mb-4">
         Document Information
       </label>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Description */}
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Description
           </label>
           <textarea
@@ -35,13 +35,13 @@ export default function MetadataForm({
             disabled={uploading}
             placeholder="Enter document description..."
             rows="3"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed resize-none"
           />
         </div>
 
         {/* Document Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Document Type
           </label>
           <select
@@ -49,7 +49,7 @@ export default function MetadataForm({
             value={metadata.documentType}
             onChange={handleInputChange}
             disabled={uploading}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="">Select document type</option>
             <option value="contract">Contract</option>
@@ -65,7 +65,7 @@ export default function MetadataForm({
 
         {/* Priority */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Priority
           </label>
           <select
@@ -73,7 +73,7 @@ export default function MetadataForm({
             value={metadata.priority}
             onChange={handleInputChange}
             disabled={uploading}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="low">Low</option>
             <option value="medium">Medium</option>
@@ -84,7 +84,7 @@ export default function MetadataForm({
 
         {/* Confidentiality */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             <FiShield className="inline mr-1" />
             Confidentiality
           </label>
@@ -93,7 +93,7 @@ export default function MetadataForm({
             value={metadata.confidentiality}
             onChange={handleInputChange}
             disabled={uploading}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="public">Public</option>
             <option value="internal">Internal</option>
@@ -104,7 +104,7 @@ export default function MetadataForm({
 
         {/* Author */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             <FiUser className="inline mr-1" />
             Author
           </label>
@@ -115,7 +115,7 @@ export default function MetadataForm({
             onChange={handleInputChange}
             disabled={uploading}
             placeholder="Enter author name..."
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
       </div>

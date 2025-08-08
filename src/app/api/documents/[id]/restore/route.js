@@ -1,7 +1,10 @@
+import { emailService } from "@/lib/emailService.js";
 import { NextResponse } from "next/server";
-import { requireDocumentAccess } from "../../../../../lib/auth.js";
-import { emailService } from "../../../../../lib/emailService.js";
-import { DocumentService, UserService } from "../../../../../lib/firestore.js";
+import { requireAuth } from "../../../../../lib/auth.js";
+import {
+  DocumentService,
+  UserService,
+} from "../../../../../lib/services/index.js";
 
 // Helper function to check document ownership
 async function checkDocumentOwnership(documentId, userId) {
@@ -16,7 +19,7 @@ async function checkDocumentOwnership(documentId, userId) {
 
 // POST - Restore document version (create new version based on previous version)
 async function POST(request, { params }) {
-  return requireDocumentAccess(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const { id } = params;
 

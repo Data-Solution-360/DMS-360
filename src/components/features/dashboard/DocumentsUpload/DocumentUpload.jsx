@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { useApi } from "@/hooks/useApi";
+import { useMemo, useState } from "react";
 import { FiAlertCircle, FiUpload } from "react-icons/fi";
+import Swal from "sweetalert2";
 import { clientUploadService } from "../../../../lib/clientUpload.js";
 
 // Import modular components
@@ -33,6 +35,7 @@ export default function DocumentUploadWithTags({
   const [uploadResults, setUploadResults] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [errors, setErrors] = useState([]);
+  const { apiCall } = useApi();
 
   // Memoized validation function
   const validationErrors = useMemo(() => {
@@ -57,12 +60,13 @@ export default function DocumentUploadWithTags({
     });
 
     return errors;
-  }, [selectedFiles, selectedDepartment, selectedTags, maxFileSize]);
+  }, [selectedFiles, selectedTags, maxFileSize]);
 
   const isValid = validationErrors.length === 0;
 
   // Reset selected tags when department changes
   const handleDepartmentChange = (department) => {
+    console.log("Department changed to:", department);
     setSelectedDepartment(department);
     setSelectedTags([]); // Clear selected tags when department changes
   };
@@ -118,16 +122,11 @@ export default function DocumentUploadWithTags({
           version: metadata.version || "",
         };
 
-        // Save document metadata
-        const response = await fetch("/api/documents/upload", {
+        // Save document metadata using authenticated API call
+        const data = await apiCall("/api/documents/upload", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
           body: JSON.stringify(documentData),
         });
-
-        const data = await response.json();
 
         if (data.success) {
           setUploadProgress((prev) => ({
@@ -141,9 +140,6 @@ export default function DocumentUploadWithTags({
             status: "success",
             data: data.data,
           };
-
-          // Close the modal
-          onClose();
         } else {
           setUploadProgress((prev) => ({
             ...prev,
@@ -181,17 +177,96 @@ export default function DocumentUploadWithTags({
       const successfulUploads = results.filter((r) => r.status === "success");
       const failedUploads = results.filter((r) => r.status === "error");
 
-      if (successfulUploads.length > 0 && onUploadSuccess) {
-        setTimeout(() => {
+      if (successfulUploads.length > 0) {
+        // Show success alert
+        const uploadCount = successfulUploads.length;
+        const fileNames = successfulUploads
+          .map((upload) => upload.fileName)
+          .join(", ");
+
+        await Swal.fire({
+          title: "Upload Successful! 🎉",
+          html: `
+            <div class="text-left">
+              <p class="mb-3"><strong>${uploadCount} document${
+            uploadCount > 1 ? "s" : ""
+          } uploaded successfully!</strong></p>
+              <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                <p class="text-sm text-green-800 font-medium">Uploaded files:</p>
+                <p class="text-sm text-green-700 mt-1">${fileNames}</p>
+              </div>
+              <p class="text-sm text-gray-600">Your documents are now available in the system.</p>
+            </div>
+          `,
+          icon: "success",
+          confirmButtonText: "Great!",
+          confirmButtonColor: "#3B82F6",
+          showClass: {
+            popup: "animate__animated animate__fadeInDown",
+          },
+          hideClass: {
+            popup: "animate__animated animate__fadeOutUp",
+          },
+        });
+
+        // Call the onUploadSuccess callback
+        if (onUploadSuccess) {
           onUploadSuccess(successfulUploads);
-        }, 1000);
+        }
       }
 
       if (failedUploads.length > 0) {
+        // Show error alert for failed uploads
+        const failedCount = failedUploads.length;
+        const failedFileNames = failedUploads
+          .map((upload) => upload.fileName)
+          .join(", ");
+
+        await Swal.fire({
+          title: "Some Uploads Failed ⚠️",
+          html: `
+            <div class="text-left">
+              <p class="mb-3"><strong>${failedCount} document${
+            failedCount > 1 ? "s" : ""
+          } failed to upload.</strong></p>
+              <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                <p class="text-sm text-red-800 font-medium">Failed files:</p>
+                <p class="text-sm text-red-700 mt-1">${failedFileNames}</p>
+              </div>
+              <p class="text-sm text-gray-600">Please check the error details and try again.</p>
+            </div>
+          `,
+          icon: "warning",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#EF4444",
+          showClass: {
+            popup: "animate__animated animate__fadeInDown",
+          },
+          hideClass: {
+            popup: "animate__animated animate__fadeOutUp",
+          },
+        });
+
         setErrors(failedUploads.map((f) => `${f.fileName}: ${f.error}`));
       }
     } catch (error) {
       console.error("Upload batch error:", error);
+
+      // Show error alert for batch failure
+      await Swal.fire({
+        title: "Upload Failed ❌",
+        text: "An unexpected error occurred during upload. Please try again.",
+        icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#EF4444",
+        showClass: {
+          popup: "animate__animated animate__fadeInDown",
+        },
+        hideClass: {
+          popup: "animate__animated animate__fadeOutUp",
+        },
+      });
+
       setErrors(["Upload failed. Please try again."]);
     } finally {
       setUploading(false);
@@ -215,7 +290,7 @@ export default function DocumentUploadWithTags({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-white">
       {/* Header */}
       <div>
         <h3 className="text-lg font-medium text-gray-900">Upload Documents</h3>
@@ -267,10 +342,10 @@ export default function DocumentUploadWithTags({
 
       {/* Validation Errors */}
       {!uploading && validationErrors.length > 0 && (
-        <div className="rounded-md bg-yellow-50 p-4">
+        <div className="rounded-md bg-yellow-50 p-4 border border-yellow-200">
           <div className="flex">
             <div className="flex-shrink-0">
-              <FiAlertCircle className="h-5 w-5 text-yellow-400" />
+              <FiAlertCircle className="h-5 w-5 text-yellow-500" />
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-yellow-800">
@@ -290,10 +365,10 @@ export default function DocumentUploadWithTags({
 
       {/* Runtime Errors */}
       {errors.length > 0 && (
-        <div className="rounded-md bg-red-50 p-4">
+        <div className="rounded-md bg-red-50 p-4 border border-red-200">
           <div className="flex">
             <div className="flex-shrink-0">
-              <FiAlertCircle className="h-5 w-5 text-red-400" />
+              <FiAlertCircle className="h-5 w-5 text-red-500" />
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800">
@@ -326,10 +401,10 @@ export default function DocumentUploadWithTags({
           {uploadResults.map((result) => (
             <div
               key={result.fileId}
-              className={`p-3 rounded-md ${
+              className={`p-3 rounded-md border ${
                 result.status === "success"
-                  ? "bg-green-50 text-green-800"
-                  : "bg-red-50 text-red-800"
+                  ? "bg-green-50 text-green-800 border-green-200"
+                  : "bg-red-50 text-red-800 border-red-200"
               }`}
             >
               <div className="flex items-center justify-between">
@@ -347,18 +422,18 @@ export default function DocumentUploadWithTags({
       )}
 
       {/* Action Buttons */}
-      <div className="flex justify-end space-x-3">
+      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
         <button
           onClick={handleCancel}
           disabled={uploading}
-          className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleUpload}
           disabled={!isValid || uploading}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {uploading ? (
             <>

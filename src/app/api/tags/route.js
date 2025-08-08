@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAuth, requireRole } from "../../../lib/auth.js";
-import { TagService } from "../../../lib/firestore.js";
+import { TagService } from "../../../lib/services/index.js";
+import { requireAuth } from "../../../lib/auth.js";
 
 // GET - Get all tags (accessible to all authenticated users)
 async function GET(request) {

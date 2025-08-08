@@ -4,11 +4,10 @@
 
 @layer base {
   html {
-    font-family: var(--font-poppins), var(--font-inter), system-ui, sans-serif;
+    font-family: "Manrope", system-ui, sans-serif;
   }
 
   body {
-    @apply bg-gray-900 text-white;
     background-attachment: fixed;
   }
 
@@ -832,4 +831,8 @@
 .modal-tree-scrollbar::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #059669, #0d9488);
   box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.ant-collapse-content-box {
+  padding-top: 0 !important;
 }

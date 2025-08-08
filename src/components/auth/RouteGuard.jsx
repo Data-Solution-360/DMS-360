@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useAuth } from "../../store";
+import { useAuth } from "../../context/auth/AuthContext"; // Fixed import path
 
 // Define which routes require authentication
 const PROTECTED_ROUTES = ["/dashboard", "/admin", "/profile", "/settings"];

@@ -1,6 +1,9 @@
+import { AntdRegistry } from "@ant-design/nextjs-registry";
+import "@ant-design/v5-patch-for-react-19";
 import { Inter, Poppins } from "next/font/google";
-import RouteGuard from "../components/auth/RouteGuard";
-import Providers from "../components/Providers";
+import AntdConfig from "../components/AntdConfig";
+import ModalProvider from "../components/ModalProvider";
+import { AppProviders } from "../context";
 import "./globals.css";
 
 const inter = Inter({
@@ -28,10 +31,15 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <Providers>
-          <RouteGuard>{children}</RouteGuard>
-        </Providers>
+      <body className={`${inter.variable} ${poppins.variable}`}>
+        <AntdConfig />
+        <div id="modal-root">
+          <AntdRegistry>
+            <AppProviders>
+              <ModalProvider>{children}</ModalProvider>
+            </AppProviders>
+          </AntdRegistry>
+        </div>
       </body>
     </html>
   );

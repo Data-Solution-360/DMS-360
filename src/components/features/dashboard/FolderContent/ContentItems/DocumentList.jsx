@@ -8,6 +8,7 @@ import { VersionButton, VersionManager } from "../../../versions";
 const FiDownload = () => <span>📥</span>;
 const FiEye = () => <span>👁️</span>;
 const FiMoreVertical = () => <span>⋮</span>;
+const FiTrash = () => <span>🗑️</span>;
 
 // Utility functions
 const formatFileSize = (bytes) => {
@@ -36,7 +37,7 @@ const getFileIcon = (mimeType) => {
   return "📄";
 };
 
-export default function DocumentList({ document, onAction, onVersionChange }) {
+export default function DocumentList({ document, onAction, onVersionChange, isDeleting = false }) {
   const { user } = useAuth();
 
   const handleVersionChange = () => {
@@ -46,9 +47,9 @@ export default function DocumentList({ document, onAction, onVersionChange }) {
   };
 
   return (
-    <div className="group relative flex items-center p-4 rounded-2xl bg-gradient-to-r from-white/5 to-white/10 hover:from-white/10 hover:to-white/15 transition-all duration-300 border border-white/10 hover:border-white/20">
+    <div className="group relative flex items-center p-4 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors">
       {/* Document icon */}
-      <div className="w-12 h-12 bg-gradient-to-r from-sky-500 to-blue-500 rounded-xl flex items-center justify-center mr-4 shadow-lg group-hover:shadow-sky-500/50 transition-all duration-300">
+      <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mr-4">
         <span className="h-6 w-6 text-white">
           {getFileIcon(document.mimeType)}
         </span>
@@ -56,17 +57,17 @@ export default function DocumentList({ document, onAction, onVersionChange }) {
 
       {/* Document info */}
       <div className="flex-1 min-w-0">
-        <h3 className="text-lg font-semibold text-white/90 group-hover:text-white transition-colors duration-300 truncate">
+        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-gray-700 transition-colors truncate">
           {document.originalName}
         </h3>
-        <p className="text-sm text-white/70 group-hover:text-white/90 transition-colors duration-300 truncate">
+        <p className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors truncate">
           {document.mimeType}
         </p>
-        <div className="flex items-center space-x-4 mt-1 text-xs text-white/60">
+        <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500">
           <span>{formatFileSize(document.size)}</span>
           <span>{formatDate(document.createdAt)}</span>
           {document.tags && document.tags.length > 0 && (
-            <span className="text-emerald-300">
+            <span className="text-blue-600">
               {document.tags.length} tags
             </span>
           )}
@@ -77,17 +78,33 @@ export default function DocumentList({ document, onAction, onVersionChange }) {
       <div className="flex items-center space-x-2 ml-4">
         <button
           onClick={() => onAction("view", document)}
-          className="p-2 rounded-lg bg-white/10 hover:bg-sky-500/20 text-white/70 hover:text-sky-300 transition-all duration-300"
+          className="p-2 rounded-lg bg-gray-100 hover:bg-blue-100 text-gray-600 hover:text-blue-600 transition-colors"
           title="View"
+          disabled={isDeleting}
         >
           <FiEye className="h-4 w-4" />
         </button>
         <button
           onClick={() => onAction("download", document)}
-          className="p-2 rounded-lg bg-white/10 hover:bg-emerald-500/20 text-white/70 hover:text-emerald-300 transition-all duration-300"
+          className="p-2 rounded-lg bg-gray-100 hover:bg-green-100 text-gray-600 hover:text-green-600 transition-colors"
           title="Download"
+          disabled={isDeleting}
         >
           <FiDownload className="h-4 w-4" />
+        </button>
+
+        {/* Delete button */}
+        <button
+          onClick={() => onAction("delete", document)}
+          className="p-2 rounded-lg bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 transition-colors"
+          title="Delete"
+          disabled={isDeleting}
+        >
+          {isDeleting ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+          ) : (
+            <FiTrash className="h-4 w-4" />
+          )}
         </button>
 
         {/* Version Management Button */}
@@ -103,8 +120,9 @@ export default function DocumentList({ document, onAction, onVersionChange }) {
 
         <button
           onClick={() => onAction("more", document)}
-          className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all duration-300"
+          className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-colors"
           title="More options"
+          disabled={isDeleting}
         >
           <FiMoreVertical className="h-4 w-4" />
         </button>

@@ -6,7 +6,6 @@ import DeleteFolderModal from "./components/DeleteFolderModal";
 import EditFolderModal from "./components/EditFolderModal";
 import FolderTree from "./components/FolderTree";
 import { useFolderSidebar } from "./hooks/useFolderSidebar";
-import { FOLDER_STYLES, FolderIcons } from "./utils/constants";
 
 const FolderSidebar = ({
   folders = [],
@@ -15,9 +14,9 @@ const FolderSidebar = ({
   onFolderCreated,
   onFolderUpdated,
   onFolderDeleted,
-  expandedFolders = new Set(), // New prop
-  setExpandedFolders, // New prop
-  highlightedFolderId = null, // New prop
+  expandedFolders = new Set(),
+  setExpandedFolders,
+  highlightedFolderId = null,
 }) => {
   const {
     expandedFolders: internalExpandedFolders,
@@ -25,7 +24,7 @@ const FolderSidebar = ({
     newFolderName,
     selectedParentId,
     creating,
-    toggleFolder: hookToggleFolder, // Rename to avoid conflict
+    toggleFolder: hookToggleFolder,
     expandParentFolders,
     openCreateModal,
     closeCreateModal,
@@ -34,7 +33,6 @@ const FolderSidebar = ({
     setSelectedParentId,
   } = useFolderSidebar(folders, onFolderCreated);
 
-  // Edit/Delete modal states
   const [editingFolder, setEditingFolder] = useState(null);
   const [deletingFolder, setDeletingFolder] = useState(null);
 
@@ -68,15 +66,12 @@ const FolderSidebar = ({
     setDeletingFolder(null);
   };
 
-  // Use the external expandedFolders if provided, otherwise use internal
   const currentExpandedFolders =
     expandedFolders.size > 0 ? expandedFolders : internalExpandedFolders;
 
-  // Create a toggle function that uses external state if provided
   const toggleFolder = useCallback(
     (folderId) => {
       if (setExpandedFolders) {
-        // Use external state
         setExpandedFolders((prev) => {
           const newSet = new Set(prev);
           if (newSet.has(folderId)) {
@@ -87,7 +82,6 @@ const FolderSidebar = ({
           return newSet;
         });
       } else {
-        // Use internal hook function
         hookToggleFolder(folderId);
       }
     },
@@ -96,24 +90,28 @@ const FolderSidebar = ({
 
   return (
     <>
-      <div className={FOLDER_STYLES.container}>
+      <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
         {/* Header */}
-        <div className={FOLDER_STYLES.header}>
-          <h3 className={FOLDER_STYLES.title}>📁 Folders</h3>
-          <button onClick={openCreateModal} className={FOLDER_STYLES.addButton}>
-            <FolderIcons.FolderPlus className="h-4 w-4 text-white group-hover:scale-110 transition-transform duration-300" />
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">📁 Folders</h3>
+          <button 
+            onClick={openCreateModal} 
+            className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            title="Create new folder"
+          >
+            <span className="text-sm">+</span>
           </button>
         </div>
 
         {/* Folder list */}
-        <div className={FOLDER_STYLES.scrollArea}>
+        <div className="space-y-1 max-h-96 overflow-y-auto">
           {folders.length === 0 ? (
-            <div className={FOLDER_STYLES.emptyState}>
-              <div className="w-16 h-16 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <FolderIcons.Folder className="h-8 w-8 text-emerald-300" />
+            <div className="text-center py-8">
+              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <span className="text-xl">📁</span>
               </div>
-              <p className="text-white/60 text-sm">No folders yet</p>
-              <p className="text-white/40 text-xs mt-1">
+              <p className="text-gray-600 text-sm">No folders yet</p>
+              <p className="text-gray-500 text-xs mt-1">
                 Create your first folder to get started
               </p>
             </div>
@@ -132,7 +130,7 @@ const FolderSidebar = ({
         </div>
       </div>
 
-      {/* Create folder modal */}
+      {/* Modals */}
       <CreateFolderModal
         isOpen={isCreatingFolder}
         folders={folders}
@@ -145,7 +143,6 @@ const FolderSidebar = ({
         onParentSelect={setSelectedParentId}
       />
 
-      {/* Edit folder modal */}
       <EditFolderModal
         isOpen={!!editingFolder}
         folder={editingFolder}
@@ -153,7 +150,6 @@ const FolderSidebar = ({
         onEdit={handleFolderEdited}
       />
 
-      {/* Delete folder modal */}
       <DeleteFolderModal
         isOpen={!!deletingFolder}
         folder={deletingFolder}

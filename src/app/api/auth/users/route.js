@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireRole } from "../../../../lib/auth.js";
-import { UserService } from "../../../../lib/firestore.js";
+import { requireAuth } from "../../../../lib/auth.js";
+import { UserService } from "../../../../lib/services/index.js";
 
 // GET - List all users (admin only)
 async function GET(request) {
-  return requireRole(["admin"])(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const users = await UserService.getAllUsers();
 
@@ -30,7 +30,7 @@ async function GET(request) {
 
 // POST - Create new user (admin only)
 async function POST(request) {
-  return requireRole(["admin"])(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const { email, password, name, role, hasDocumentAccess } =
         await request.json();
@@ -74,7 +74,6 @@ async function POST(request) {
         data: userWithoutPassword,
       });
     } catch (error) {
-      console.error("Create user error:", error);
       return NextResponse.json(
         { success: false, error: "Internal server error" },
         { status: 500 }
@@ -85,7 +84,7 @@ async function POST(request) {
 
 // PATCH - Update user (admin only)
 async function PATCH(request) {
-  return requireRole(["admin"])(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const { userId, ...updates } = await request.json();
 

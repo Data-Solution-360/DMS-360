@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireDocumentAccess } from "../../../lib/auth.js";
-import { DocumentService } from "../../../lib/firestore.js";
+import { DocumentService } from "../../../lib/services/index.js";
+import { requireAuth } from "../../../lib/auth.js";
 
 // GET - Get all documents
 async function GET(request) {
-  return requireDocumentAccess(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const { searchParams } = new URL(request.url);
       const folderId = searchParams.get("folderId");
@@ -74,7 +74,7 @@ async function GET(request) {
 
 // POST - Create new document
 async function POST(request) {
-  return requireDocumentAccess(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const documentData = await request.json();
 

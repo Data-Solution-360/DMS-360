@@ -14,7 +14,7 @@ import {
   StatsSection,
   TestimonialsSection,
 } from "../components/features/home";
-import { useAuth } from "../store";
+import { useAuth } from "../store/AuthContext"; // Updated import path
 
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useAuth();

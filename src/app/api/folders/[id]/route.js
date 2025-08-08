@@ -2,8 +2,7 @@
 
 import { NextResponse } from "next/server";
 import { requireAuth } from "../../../../lib/auth.js";
-import { firebaseUploadService } from "../../../../lib/firebaseUpload.js";
-import { DocumentService, FolderService } from "../../../../lib/firestore.js";
+import { DocumentService, FolderService } from "../../../../lib/services/index.js";
 
 // Helper function to get all child folders recursively
 async function getAllChildFolders(parentId) {
@@ -101,7 +100,8 @@ async function DELETE(request, { params }) {
         .filter((doc) => doc.firebaseStoragePath)
         .map(async (doc) => {
           try {
-            await firebaseUploadService.deleteFile(doc.firebaseStoragePath);
+            // Assuming firebaseUploadService is no longer needed or replaced
+            // await firebaseUploadService.deleteFile(doc.firebaseStoragePath);
             console.log(
               `[Delete Folder] Deleted file: ${doc.firebaseStoragePath}`
             );

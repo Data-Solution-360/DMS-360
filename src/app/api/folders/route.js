@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "../../../lib/auth.js";
-import { FolderService } from "../../../lib/firestore.js";
+import { FolderService } from "../../../lib/services/index.js";
 
 // GET - Get all folders
 async function GET(request) {

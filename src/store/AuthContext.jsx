@@ -168,6 +168,11 @@ export function AuthProvider({ children }) {
               type: actionTypes.AUTH_STATE_CHANGED,
               payload: { user: data.user },
             });
+            
+            // Initialize browser session tracking if session ID is available
+            if (data.sessionId) {
+              initializeBrowserSession(data.sessionId);
+            }
           } else {
             // If API call fails, try to refresh token
             const freshToken = await refreshToken();
@@ -183,6 +188,11 @@ export function AuthProvider({ children }) {
                   type: actionTypes.AUTH_STATE_CHANGED,
                   payload: { user: retryData.user },
                 });
+                
+                // Initialize browser session tracking
+                if (retryData.sessionId) {
+                  initializeBrowserSession(retryData.sessionId);
+                }
               } else {
                 dispatch({ type: actionTypes.LOGOUT });
               }

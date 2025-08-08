@@ -5,7 +5,7 @@ const FolderTree = ({
   folders,
   expandedFolders,
   selectedFolderId,
-  highlightedFolderId = null, // New prop
+  highlightedFolderId = null,
   onToggle,
   onSelect,
   onEdit,
@@ -13,14 +13,14 @@ const FolderTree = ({
   level = 0,
 }) => {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 bg-white text-black">
       {folders.map((folder) => (
         <FolderItem
           key={folder.id}
           folder={folder}
           isExpanded={expandedFolders.has(folder.id)}
           isSelected={selectedFolderId === folder.id}
-          isHighlighted={highlightedFolderId === folder.id} // Pass highlighting
+          isHighlighted={highlightedFolderId === folder.id}
           onToggle={onToggle}
           onSelect={onSelect}
           onEdit={onEdit}
@@ -32,7 +32,7 @@ const FolderTree = ({
               folders={folder.children}
               expandedFolders={expandedFolders}
               selectedFolderId={selectedFolderId}
-              highlightedFolderId={highlightedFolderId} // Pass highlighting recursively
+              highlightedFolderId={highlightedFolderId}
               onToggle={onToggle}
               onSelect={onSelect}
               onEdit={onEdit}

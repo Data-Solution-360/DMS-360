@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { UserService } from "../../../../lib/services/index.js";
 import { requireAuth } from "../../../../lib/auth.js";
-import { UserService } from "../../../../lib/firestore.js";
 
 // GET - Search users
 async function GET(request) {

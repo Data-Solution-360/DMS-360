@@ -1,11 +1,12 @@
+import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { requireDocumentAccess } from "../../../../lib/auth.js";
-import { DocumentService } from "../../../../lib/firestore.js";
-import { CloudStorageService } from "../../../../lib/storage.js";
+import { requireAuth } from "../../../../lib/auth.js";
+import { adminDb } from "../../../../lib/firebase-admin.js";
+import { DocumentService } from "../../../../lib/services/index.js";
 
 // GET - Get document by ID
 async function GET(request, { params }) {
-  return requireDocumentAccess(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const { id } = params;
       const document = await DocumentService.getDocumentById(id);
@@ -47,7 +48,7 @@ async function GET(request, { params }) {
 
 // PUT - Update document
 async function PUT(request, { params }) {
-  return requireDocumentAccess(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const { id } = params;
       const updateData = await request.json();
@@ -94,9 +95,9 @@ async function PUT(request, { params }) {
   })(request);
 }
 
-// DELETE - Delete document and its file from storage
+// DELETE - Soft delete document
 async function DELETE(request, { params }) {
-  return requireDocumentAccess(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const documentId = params.id;
       const user = request.user.user;
@@ -123,80 +124,55 @@ async function DELETE(request, { params }) {
         );
       }
 
-      // Get all versions of this document
-      const allVersions = await DocumentService.getAllDocumentVersions(
-        document.originalDocumentId || documentId
-      );
-
-      const deletionResults = {
-        deletedDocuments: 0,
-        deletedFiles: 0,
-        failedFiles: [],
-        errors: [],
-      };
-
-      // Delete all versions and their files
-      for (const version of allVersions) {
-        try {
-          // Delete from Firestore first
-          await DocumentService.deleteDocument(version.id);
-          deletionResults.deletedDocuments++;
-
-          // Delete file from storage
-          if (version.filePath) {
-            try {
-              await CloudStorageService.deleteFile(version.filePath);
-              deletionResults.deletedFiles++;
-            } catch (storageError) {
-              console.error(
-                `Failed to delete file ${version.filePath}:`,
-                storageError
-              );
-              deletionResults.failedFiles.push({
-                path: version.filePath,
-                error: storageError.message,
-              });
-            }
-          }
-
-          // Delete thumbnail if exists
-          if (version.thumbnailPath) {
-            try {
-              await CloudStorageService.deleteFile(version.thumbnailPath);
-              deletionResults.deletedFiles++;
-            } catch (storageError) {
-              console.error(
-                `Failed to delete thumbnail ${version.thumbnailPath}:`,
-                storageError
-              );
-              deletionResults.failedFiles.push({
-                path: version.thumbnailPath,
-                error: storageError.message,
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`Error deleting version ${version.id}:`, error);
-          deletionResults.errors.push({
-            versionId: version.id,
-            error: error.message,
-          });
-        }
+      // If already in trash, return success
+      if (document.inTrash) {
+        return NextResponse.json({
+          success: true,
+          message: "Document is already in trash",
+        });
       }
+
+      // Create a trashbox entry with a snapshot for listing
+      await adminDb.collection("trashbox").add({
+        type: "document",
+        docId: documentId, // keep exact key name as requested
+        originalCollection: "documents",
+        data: {
+          originalName: document.originalName || "",
+          name: document.name || "",
+          size: document.size || 0,
+          mimeType: document.mimeType || "",
+          folderId: document.folderId || null,
+          folderName: document.folderName || "",
+          createdAt: document.createdAt || null,
+          createdBy: document.createdBy || null,
+          filePath: document.filePath || null,
+          thumbnailPath: document.thumbnailPath || null,
+        },
+        deletedAt: FieldValue.serverTimestamp(),
+        deletedBy: user.id || "system",
+      });
+
+      // Flag document as in trash
+      await DocumentService.updateDocument(documentId, {
+        inTrash: true,
+        deletedAt: FieldValue.serverTimestamp(),
+        deletedBy: user.id || "system",
+        updatedAt: FieldValue.serverTimestamp(),
+      });
 
       return NextResponse.json({
         success: true,
-        data: deletionResults,
-        message: `Deleted ${deletionResults.deletedDocuments} documents and ${deletionResults.deletedFiles} files`,
+        message: "Document moved to trash",
       });
     } catch (error) {
-      console.error("Delete document error:", error);
+      console.error("Error soft-deleting document:", error);
       return NextResponse.json(
-        { success: false, error: error.message || "Failed to delete document" },
+        { success: false, error: "Failed to delete document" },
         { status: 500 }
       );
     }
   })(request);
 }
 
-export { DELETE, GET, PUT };
+export { GET, PUT, DELETE };

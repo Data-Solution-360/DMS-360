@@ -5,4 +5,5 @@ export { UserManagement } from "./UserManagement";
 export { DepartmentManager, DepartmentSelector } from "./DepartmentManagement";
 
 // Tag Management
+export { LoginHistory } from "./LoginHistory";
 export { TagManager } from "./TagManagement";

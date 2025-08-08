@@ -25,6 +25,7 @@ export const UPLOAD_CONFIG = {
     "application/vnd.ms-powerpoint",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "text/plain",
+    "text/csv",
     "image/jpeg",
     "image/png",
     "image/gif",
@@ -37,6 +38,121 @@ export const UPLOAD_CONFIG = {
   ],
   MAX_FILES_PER_UPLOAD: 10,
 };
+
+// MIME type to user-friendly name mapping
+export const MIME_TYPE_MAPPING = {
+  // PDF
+  "application/pdf": "PDF",
+
+  // Word Documents
+  "application/msword": "Word",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    "Word",
+
+  // Excel Spreadsheets
+  "application/vnd.ms-excel": "Excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "Excel",
+  "text/csv": "CSV",
+
+  // PowerPoint Presentations
+  "application/vnd.ms-powerpoint": "PowerPoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    "PowerPoint",
+
+  // Text Files
+  "text/plain": "Text",
+
+  // Images
+  "image/jpeg": "Image",
+  "image/jpg": "Image",
+  "image/png": "Image",
+  "image/gif": "Image",
+  "image/bmp": "Image",
+  "image/webp": "Image",
+
+  // Videos
+  "video/mp4": "Video",
+  "video/avi": "Video",
+  "video/mov": "Video",
+  "video/wmv": "Video",
+  "video/flv": "Video",
+  "video/webm": "Video",
+
+  // Audio
+  "audio/mpeg": "Audio",
+  "audio/mp3": "Audio",
+  "audio/wav": "Audio",
+  "audio/ogg": "Audio",
+
+  // Archives
+  "application/zip": "ZIP",
+  "application/x-rar-compressed": "RAR",
+  "application/x-7z-compressed": "7Z",
+  "application/x-tar": "TAR",
+  "application/gzip": "GZIP",
+};
+
+// File type categories for search
+export const FILE_TYPE_CATEGORIES = [
+  { label: "All Types", value: "" },
+  { label: "PDF Documents", value: "pdf" },
+  { label: "Word Documents", value: "word" },
+  { label: "Excel Spreadsheets", value: "excel" },
+  { label: "PowerPoint Presentations", value: "powerpoint" },
+  { label: "Text Files", value: "text" },
+  { label: "Images", value: "image" },
+  { label: "Videos", value: "video" },
+  { label: "Audio Files", value: "audio" },
+  { label: "Archives", value: "archive" },
+];
+
+// Helper function to get user-friendly file type name
+export function getFileTypeName(mimeType) {
+  if (!mimeType) return "Unknown";
+
+  // Direct mapping
+  if (MIME_TYPE_MAPPING[mimeType]) {
+    return MIME_TYPE_MAPPING[mimeType];
+  }
+
+  // Fallback: extract from MIME type
+  const type = mimeType.split("/")[1];
+  if (type) {
+    return type.toUpperCase();
+  }
+
+  return "Unknown";
+}
+
+// Helper function to get file category from MIME type
+export function getFileCategory(mimeType) {
+  if (!mimeType) return "";
+
+  if (mimeType.includes("pdf")) return "pdf";
+  if (mimeType.includes("word") || mimeType.includes("document")) return "word";
+  if (
+    mimeType.includes("excel") ||
+    mimeType.includes("spreadsheet") ||
+    mimeType.includes("csv")
+  )
+    return "excel";
+  if (mimeType.includes("powerpoint") || mimeType.includes("presentation"))
+    return "powerpoint";
+  if (mimeType.includes("text") || mimeType.includes("csv")) return "text";
+  if (mimeType.includes("image")) return "image";
+  if (mimeType.includes("video")) return "video";
+  if (mimeType.includes("audio")) return "audio";
+  if (
+    mimeType.includes("zip") ||
+    mimeType.includes("rar") ||
+    mimeType.includes("7z") ||
+    mimeType.includes("tar") ||
+    mimeType.includes("gzip")
+  )
+    return "archive";
+
+  return "";
+}
 
 // API endpoints
 export const API_ENDPOINTS = {

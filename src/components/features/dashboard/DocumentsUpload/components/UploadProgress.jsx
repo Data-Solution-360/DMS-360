@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { FiAlertCircle, FiCheck, FiFile } from "react-icons/fi";
 
 export default function UploadProgress({
@@ -21,9 +20,9 @@ export default function UploadProgress({
 
     switch (result.status) {
       case "success":
-        return <FiCheck className="text-green-400" />;
+        return <FiCheck className="text-green-500" />;
       case "error":
-        return <FiAlertCircle className="text-red-400" />;
+        return <FiAlertCircle className="text-red-500" />;
       default:
         return <FiFile className="text-gray-400" />;
     }
@@ -62,7 +61,7 @@ export default function UploadProgress({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-gray-300">
+      <h3 className="text-sm font-medium text-gray-900">
         Upload Progress ({selectedFiles.length} files)
       </h3>
       <div className="space-y-3 max-h-60 overflow-y-auto">
@@ -74,28 +73,28 @@ export default function UploadProgress({
           return (
             <div
               key={fileObj.id}
-              className="bg-gray-800 rounded-lg p-4 border border-gray-700"
+              className="bg-gray-50 rounded-lg p-4 border border-gray-200"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
                   {getStatusIcon(result, fileObj.id)}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
+                    <p className="text-sm font-medium text-gray-900 truncate">
                       {fileObj.file.name}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-500">
                       {formatFileSize(fileObj.file.size)}
                     </p>
                   </div>
                 </div>
-                <span className="text-xs text-gray-400 ml-2">
+                <span className="text-xs text-gray-500 ml-2">
                   {getStatusText(result, fileObj.id)}
                 </span>
               </div>
 
               {/* Progress Bar */}
               {progress?.status === "uploading" && (
-                <div className="w-full bg-gray-700 rounded-full h-2">
+                <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${progressValue}%` }}
@@ -105,7 +104,7 @@ export default function UploadProgress({
 
               {/* Error Details */}
               {result?.status === "error" && (
-                <div className="mt-2 p-2 bg-red-900/20 border border-red-800/30 rounded text-red-400 text-xs">
+                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
                   {result.error}
                 </div>
               )}

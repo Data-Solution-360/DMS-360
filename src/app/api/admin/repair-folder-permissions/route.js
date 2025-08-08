@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { FolderService } from "../../../../lib/services/index.js";
 import { requireAuth } from "../../../../lib/auth.js";
-import { FolderService } from "../../../../lib/firestore.js";
 
 export async function POST(request) {
   return requireAuth(async (request) => {

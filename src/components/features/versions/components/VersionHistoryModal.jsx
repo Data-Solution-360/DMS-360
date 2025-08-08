@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "react-modal";
+import Swal from "sweetalert2";
 import { formatTimestamp } from "../../../../lib/utils.js";
 import { useVersionActions } from "../hooks/useVersionActions";
 import { useVersionHistory } from "../hooks/useVersionHistory";
@@ -35,6 +36,16 @@ export default function VersionHistoryModal({
   async function handleRestoreSuccess() {
     setRestoring(false);
     setRestoreError("");
+
+    // Show success message with SweetAlert
+    await Swal.fire({
+      icon: "success",
+      title: "Version Restored!",
+      text: "The document has been successfully restored to the selected version.",
+      confirmButtonColor: "#10b981",
+      confirmButtonText: "OK",
+    });
+
     if (onRestore) {
       onRestore();
     }
@@ -42,11 +53,20 @@ export default function VersionHistoryModal({
   }
 
   const handleRestore = async (versionDocument) => {
-    if (
-      !confirm(
-        `Are you sure you want to restore version ${versionDocument.version}? This will create a new version with the restored content.`
-      )
-    ) {
+    // Use SweetAlert for confirmation instead of confirm()
+    const result = await Swal.fire({
+      icon: "question",
+      title: "Restore Version?",
+      text: `Are you sure you want to restore version ${versionDocument.version}? This will create a new version with the restored content.`,
+      showCancelButton: true,
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, restore it!",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
 
@@ -57,6 +77,15 @@ export default function VersionHistoryModal({
       await restoreVersion(versionDocument.id);
     } catch (error) {
       setRestoreError(error.message || "Failed to restore version");
+
+      // Show error message with SweetAlert
+      await Swal.fire({
+        icon: "error",
+        title: "Restore Failed",
+        text: error.message || "Failed to restore version. Please try again.",
+        confirmButtonColor: "#ef4444",
+        confirmButtonText: "OK",
+      });
     }
   };
 
@@ -67,20 +96,18 @@ export default function VersionHistoryModal({
       isOpen={isOpen}
       onRequestClose={onClose}
       contentLabel="Version History"
-      overlayClassName="fixed top-0 left-0 w-full h-full bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
-      className="bg-gray-900 rounded-lg shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden outline-none border border-gray-700"
+      overlayClassName="fixed top-0 left-0 w-full h-full bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+      className="bg-white rounded-lg shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden outline-none border border-gray-200"
       shouldCloseOnOverlayClick={!restoring}
       shouldCloseOnEsc={!restoring}
     >
-      <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-900">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-          Version History
-        </h2>
+      <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <h2 className="text-2xl font-bold text-gray-800">Version History</h2>
         <div className="flex items-center space-x-2">
           <button
             onClick={refresh}
             disabled={loading || restoring}
-            className="p-2 text-gray-400 hover:text-blue-400 rounded-md hover:bg-blue-500/10 transition-colors disabled:opacity-50"
+            className="p-2 text-gray-500 hover:text-blue-600 rounded-md hover:bg-blue-50 transition-colors disabled:opacity-50"
             title="Refresh versions"
           >
             <span className="text-lg">🔄</span>
@@ -88,23 +115,25 @@ export default function VersionHistoryModal({
           <button
             onClick={onClose}
             disabled={restoring}
-            className="text-gray-400 hover:text-gray-200 transition-colors disabled:opacity-50"
+            className="text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
           >
             <span className="text-2xl">✕</span>
           </button>
         </div>
       </div>
 
-      <div className="p-6 bg-gray-900">
+      <div className="p-6 bg-white">
         {/* Restore Loading Overlay */}
         {restoring && (
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-2xl">
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+            <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-2xl">
               <div className="flex items-center space-x-3">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-400"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div>
                 <div>
-                  <p className="text-white font-medium">Restoring version...</p>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-800 font-medium">
+                    Restoring version...
+                  </p>
+                  <p className="text-gray-500 text-sm">
                     Please wait while we create the new version.
                   </p>
                 </div>
@@ -113,24 +142,24 @@ export default function VersionHistoryModal({
           </div>
         )}
 
-        <div className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 rounded-lg p-4 mb-6 border border-blue-700/30">
-          <h3 className="font-semibold text-gray-200 mb-2">Document:</h3>
-          <p className="text-gray-300">{document.originalName}</p>
-          <p className="text-sm text-gray-400">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-6 border border-blue-200">
+          <h3 className="font-semibold text-gray-800 mb-2">Document:</h3>
+          <p className="text-gray-700">{document.originalName}</p>
+          <p className="text-sm text-gray-600">
             Current Version:{" "}
             {formatVersionDisplay(document.version, document.isLatestVersion)}
           </p>
         </div>
 
         {restoreError && (
-          <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-lg">
-            <p className="text-red-300 text-sm">{restoreError}</p>
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-700 text-sm">{restoreError}</p>
           </div>
         )}
 
         {error && (
-          <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-lg">
-            <p className="text-red-300 text-sm">
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-700 text-sm">
               Error loading versions: {error}
             </p>
           </div>
@@ -138,18 +167,18 @@ export default function VersionHistoryModal({
 
         {loading ? (
           <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mx-auto"></div>
-            <p className="text-gray-400 mt-2">Loading version history...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="text-gray-600 mt-2">Loading version history...</p>
           </div>
         ) : sortedVersions.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-4xl mb-4">📋</div>
-            <p className="text-gray-400">No version history available</p>
+            <p className="text-gray-600">No version history available</p>
             <p className="text-sm text-gray-500 mt-2">
               This document doesn't have any version history yet.
             </p>
             {/* Temporary debugging info */}
-            <div className="mt-4 p-4 bg-gray-800 rounded text-xs text-left">
+            <div className="mt-4 p-4 bg-gray-50 rounded text-xs text-left">
               <p>
                 <strong>Debug Info:</strong>
               </p>
@@ -169,8 +198,8 @@ export default function VersionHistoryModal({
                 key={version.id}
                 className={`border rounded-lg p-4 transition-all duration-200 ${
                   version.isLatestVersion
-                    ? "border-purple-500/50 bg-purple-900/20 shadow-md"
-                    : "border-gray-700 bg-gray-800/50 hover:bg-gray-800/70 hover:shadow-sm"
+                    ? "border-blue-500 bg-blue-50 shadow-md"
+                    : "border-gray-200 bg-gray-50 hover:bg-gray-100 hover:shadow-sm"
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -179,8 +208,8 @@ export default function VersionHistoryModal({
                       <span
                         className={`px-3 py-1 rounded-full text-sm font-medium ${
                           version.isLatestVersion
-                            ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                            : "bg-gray-700/50 text-gray-300 border border-gray-600"
+                            ? "bg-blue-100 text-blue-700 border border-blue-300"
+                            : "bg-gray-100 text-gray-700 border border-gray-300"
                         }`}
                       >
                         {formatVersionDisplay(
@@ -188,17 +217,17 @@ export default function VersionHistoryModal({
                           version.isLatestVersion
                         )}
                       </span>
-                      <span className="text-sm text-gray-400">
+                      <span className="text-sm text-gray-500">
                         {formatTimestamp(version.createdAt, "short")}
                       </span>
                       {version.isLatestVersion && (
-                        <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full border border-green-500/30">
+                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full border border-green-300">
                           Current
                         </span>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300 mb-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700 mb-3">
                       <div>
                         <p>
                           <strong>Uploaded by:</strong>{" "}
@@ -228,7 +257,7 @@ export default function VersionHistoryModal({
                         {version.tags.map((tag, index) => (
                           <span
                             key={index}
-                            className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30"
+                            className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full border border-blue-300"
                           >
                             {typeof tag === "string"
                               ? tag
@@ -239,8 +268,8 @@ export default function VersionHistoryModal({
                     )}
 
                     {version.description && (
-                      <div className="bg-gray-800/50 rounded-md p-3 mt-3 border border-gray-700">
-                        <p className="text-sm text-gray-300">
+                      <div className="bg-gray-50 rounded-md p-3 mt-3 border border-gray-200">
+                        <p className="text-sm text-gray-700">
                           <strong>Description:</strong> {version.description}
                         </p>
                       </div>
@@ -253,7 +282,7 @@ export default function VersionHistoryModal({
                         href={version.firebaseStorageUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-1 bg-blue-500/20 text-blue-300 text-sm rounded hover:bg-blue-500/30 transition-colors border border-blue-500/30"
+                        className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded hover:bg-blue-200 transition-colors border border-blue-300"
                       >
                         📥 Download
                       </a>
@@ -264,13 +293,13 @@ export default function VersionHistoryModal({
                         disabled={restoring}
                         className={`px-3 py-1 text-sm rounded transition-colors border ${
                           restoring
-                            ? "bg-gray-500/20 text-gray-400 border-gray-600 cursor-not-allowed"
-                            : "bg-green-500/20 text-green-300 hover:bg-green-500/30 border-green-500/30"
+                            ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
+                            : "bg-green-100 text-green-700 hover:bg-green-200 border-green-300"
                         }`}
                       >
                         {restoring ? (
                           <span className="flex items-center space-x-1">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b border-green-300"></div>
+                            <div className="animate-spin rounded-full h-3 w-3 border-b border-green-500"></div>
                             <span>Restoring...</span>
                           </span>
                         ) : (

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { UserService } from "../../../../lib/firestore.js";
+import { UserService } from "../../../../lib/services/index.js";
+import { requireAuth } from "../../../../lib/auth.js";
 
 // POST - User registration for Firebase Auth
 // Note: This is typically called after Firebase Auth user creation

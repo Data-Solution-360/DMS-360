@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireDocumentAccess } from "../../../../../lib/auth.js";
-import { DocumentService } from "../../../../../lib/firestore.js";
+import { DocumentService } from "../../../../../lib/services/index.js";
+import { requireAuth } from "../../../../../lib/auth.js";
 
 // GET - Get document versions
 async function GET(request, { params }) {
-  return requireDocumentAccess(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const { id } = params;
 

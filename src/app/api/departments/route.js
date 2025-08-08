@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAuth, requireRole } from "../../../lib/auth.js";
-import { DepartmentService } from "../../../lib/firestore.js";
+import { DepartmentService } from "../../../lib/services/index.js";
+import { requireAuth } from "../../../lib/auth.js";
 
 // GET - Get all departments (accessible to all authenticated users)
 async function GET(request) {

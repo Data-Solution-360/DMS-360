@@ -1,4 +1,4 @@
-export { default as DashboardContent } from "./DashboardMain/DashboardContent.jsx";
+export { default as DashboardContent } from "./DashboardMain/DashboardContent/DashboardContent.jsx";
 export { default as DashboardLayout } from "./DashboardMain/DashboardLayout.jsx";
 export { default as Navbar } from "./DashboardMain/Navbar.jsx";
 export { default as DateFilter } from "./DateFilter.jsx";

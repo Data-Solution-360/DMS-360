@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useApi } from "../../../../hooks/useApi";
 import { clientUploadService } from "../../../../lib/clientUpload.js";
 
 export function useVersionActions({ document, userId, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { apiCall } = useApi();
 
   const uploadVersion = async (file, metadata = {}, onProgress) => {
     if (!file || !document) {
@@ -36,26 +38,20 @@ export function useVersionActions({ document, userId, onSuccess }) {
         version: metadata.version || null,
       };
 
-      const response = await fetch("/api/documents/upload-version", {
+      // Fix: apiCall expects (url, options) not (method, url, data)
+      const response = await apiCall("/api/documents/upload-version", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(documentData),
-        credentials: "include",
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Upload failed");
+      if (response.success) {
+        if (onSuccess) {
+          onSuccess(response.data);
+        }
+        return response.data;
+      } else {
+        throw new Error(response.error || "Upload failed");
       }
-
-      if (onSuccess) {
-        onSuccess(result.data);
-      }
-
-      return result.data;
     } catch (error) {
       setError(error.message);
       throw error;
@@ -73,21 +69,19 @@ export function useVersionActions({ document, userId, onSuccess }) {
     setError(null);
 
     try {
-      const response = await fetch(`/api/documents/${versionId}/restore`, {
+      // Fix: apiCall expects (url, options) not (method, url)
+      const response = await apiCall(`/api/documents/${versionId}/restore`, {
         method: "POST",
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Restore failed");
+      if (response.success) {
+        if (onSuccess) {
+          onSuccess(response.data);
+        }
+        return response.data;
+      } else {
+        throw new Error(response.error || "Restore failed");
       }
-
-      if (onSuccess) {
-        onSuccess(result.data);
-      }
-
-      return result.data;
     } catch (error) {
       setError(error.message);
       throw error;

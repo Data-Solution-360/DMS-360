@@ -145,16 +145,16 @@ export default function StatsCards({ stats = {} }) {
               <div className="flex items-start justify-between mb-3 sm:mb-4">
                 <div className="flex-1">
                   <div className="flex items-center mb-2">
-                    <card.icon className="h-5 w-5 sm:h-6 sm:w-6 text-white/80 mr-2 sm:mr-3" />
-                    <h3 className="text-xs sm:text-sm font-medium text-white/80 truncate">
+                    <card.icon className="h-5 w-5 sm:h-6 sm:w-6 text-black/80 mr-2 sm:mr-3" />
+                    <h3 className="text-xs sm:text-sm font-medium text-black/80 truncate">
                       {card.title}
                     </h3>
                   </div>
-                  <p className="text-xl sm:text-2xl lg:text-3xl font-black text-white">
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-black text-black">
                     {card.value}
                   </p>
                   {card.subtitle && (
-                    <p className="text-xs text-white/50 mt-1">
+                    <p className="text-xs text-black/50 mt-1">
                       {card.subtitle}
                     </p>
                   )}
@@ -163,7 +163,7 @@ export default function StatsCards({ stats = {} }) {
 
               {/* Description and change indicator */}
               <div className="flex items-center justify-between">
-                <p className="text-xs sm:text-sm text-white/60">
+                <p className="text-xs sm:text-sm text-black/60">
                   {card.description}
                 </p>
               </div>
@@ -179,7 +179,7 @@ export default function StatsCards({ stats = {} }) {
       {stats.storageByType && (
         <div className="bg-gradient-to-br from-white/10 to-white/5 p-6 rounded-3xl border border-white/20 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white flex items-center">
+            <h3 className="text-lg font-semibold text-black flex items-center">
               <FiDatabase className="mr-2" />
               Storage Breakdown
             </h3>
@@ -194,10 +194,10 @@ export default function StatsCards({ stats = {} }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(stats.storageByType).map(([type, data]) => (
               <div key={type} className="text-center">
-                <div className="text-2xl font-bold text-white">
+                <div className="text-2xl font-bold text-black">
                   {formatStorage(data.size)}
                 </div>
-                <div className="text-sm text-white/70 capitalize">
+                <div className="text-sm text-black/70 capitalize">
                   {type} ({data.count})
                 </div>
                 <div className="w-full bg-white/10 rounded-full h-2 mt-2">
@@ -214,7 +214,7 @@ export default function StatsCards({ stats = {} }) {
 
           {showDetailedView && stats.userStorage && (
             <div className="mt-6 pt-6 border-t border-white/10">
-              <h4 className="text-md font-semibold text-white mb-4">
+              <h4 className="text-md font-semibold text-black mb-4">
                 Storage by User (Top 5)
               </h4>
               <div className="space-y-2">
@@ -226,14 +226,14 @@ export default function StatsCards({ stats = {} }) {
                       key={userId}
                       className="flex items-center justify-between text-sm"
                     >
-                      <span className="text-white/80 truncate">
+                      <span className="text-black/80 truncate">
                         {userData.userName}
                       </span>
                       <div className="flex items-center space-x-2">
-                        <span className="text-white/60">
+                        <span className="text-black/60">
                           {userData.documentCount} docs
                         </span>
-                        <span className="text-white font-medium">
+                        <span className="text-black font-medium">
                           {formatStorage(userData.totalSize)}
                         </span>
                       </div>

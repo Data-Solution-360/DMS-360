@@ -1,38 +1,41 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "../../../lib/auth.js";
-import { FolderService } from "../../../lib/firestore.js";
 
-// GET - Debug folders route
-async function GET(request) {
-  return requireAuth(async (request) => {
-    try {
-      const folders = await FolderService.getAllFolders();
-
-      // Return debug information
-      const debugInfo = {
-        totalFolders: folders.length,
-        folders: folders.map((folder) => ({
-          id: folder.id,
-          name: folder.name,
-          parentId: folder.parentId,
-          level: folder.level || 0,
-          permissions: folder.permissions?.length || 0,
-          createdAt: folder.createdAt,
-        })),
-      };
-
-      return NextResponse.json({
-        success: true,
-        data: debugInfo,
-      });
-    } catch (error) {
-      console.error("Debug folders error:", error);
-      return NextResponse.json(
-        { success: false, error: "Internal server error" },
-        { status: 500 }
-      );
-    }
-  })(request);
+export async function GET(request) {
+  try {
+    console.log("🔍 Debug folders endpoint called");
+    
+    // Test Firebase admin import
+    const { adminDb } = await import("../../../lib/firebase-admin.js");
+    console.log("✅ Firebase admin imported successfully");
+    
+    // Test constants import
+    const { COLLECTIONS } = await import("../../../lib/services/constants.js");
+    console.log("✅ Constants imported:", COLLECTIONS);
+    
+    // Test basic Firestore query
+    const snapshot = await adminDb.collection(COLLECTIONS.FOLDERS).limit(1).get();
+    console.log("✅ Firestore query successful, docs count:", snapshot.docs.length);
+    
+    // Test FolderService import
+    const { FolderService } = await import("../../../lib/services/index.js");
+    console.log("✅ FolderService imported successfully");
+    
+    return NextResponse.json({
+      success: true,
+      message: "All imports and basic Firestore connection working",
+      foldersCollection: COLLECTIONS.FOLDERS,
+      docCount: snapshot.docs.length
+    });
+    
+  } catch (error) {
+    console.error("❌ Debug folders error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message,
+        stack: error.stack
+      },
+      { status: 500 }
+    );
+  }
 }
-
-export { GET };

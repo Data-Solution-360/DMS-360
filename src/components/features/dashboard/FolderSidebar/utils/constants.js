@@ -109,34 +109,26 @@ export const FolderIcons = {
   ),
 };
 
-// CSS Classes
+// Simple CSS Classes
 export const FOLDER_STYLES = {
-  container:
-    "bg-gradient-to-br from-white/10 to-white/5 rounded-3xl p-6 shadow-2xl border border-white/20 backdrop-blur-xl w-full",
-  header: "flex items-center justify-between mb-6",
-  title:
-    "text-lg font-bold bg-gradient-to-r from-emerald-300 to-teal-300 bg-clip-text text-transparent",
-  addButton:
-    "group p-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 transform hover:scale-110 hover:rotate-12 shadow-lg hover:shadow-emerald-500/50",
-  scrollArea: "space-y-2 max-h-96 folder-sidebar-scrollbar",
+  container: "bg-white rounded-lg p-4 border border-gray-200 shadow-sm w-full",
+  header: "flex items-center justify-between mb-4",
+  title: "text-lg font-semibold text-gray-900",
+  addButton: "p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors",
+  scrollArea: "space-y-1 max-h-96 overflow-y-auto",
   emptyState: "text-center py-8",
 };
 
 export const FOLDER_ITEM_STYLES = {
   container: "space-y-1",
-  button:
-    "group relative flex items-center px-3 py-2 rounded-xl cursor-pointer transition-all duration-300 transform",
-  selected:
-    "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 shadow-emerald-500/25",
-  hover:
-    "hover:bg-gradient-to-r hover:from-white/10 hover:to-white/5 border border-transparent hover:border-white/20",
-  icon: "w-6 h-6 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center mr-3 shadow-lg group-hover:shadow-emerald-500/50 transition-all duration-300 transform group-hover:scale-110 group-hover:rotate-3",
-  name: "flex-1 text-sm font-medium transition-all duration-300",
-  nameSelected: "text-emerald-200 font-semibold",
-  nameDefault: "text-white/80 group-hover:text-white group-hover:font-semibold",
-  expandButton:
-    "mr-2 p-1 rounded-lg hover:bg-white/10 transition-all duration-200 group-hover:scale-110",
-  counter:
-    "text-xs px-2 py-1 rounded-full font-semibold transition-all duration-300",
+  button: "group flex items-center px-3 py-2 rounded-lg cursor-pointer transition-colors",
+  selected: "bg-blue-50 text-blue-600 border border-blue-200",
+  hover: "hover:bg-gray-50 hover:text-gray-900",
+  icon: "w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center mr-3 text-white",
+  name: "flex-1 text-sm font-medium transition-colors",
+  nameSelected: "text-blue-600 font-semibold",
+  nameDefault: "text-gray-700 group-hover:text-gray-900",
+  expandButton: "mr-2 p-1 rounded hover:bg-gray-100 transition-colors",
+  counter: "text-xs px-2 py-1 rounded-full font-medium",
   children: "ml-4 space-y-1",
 };

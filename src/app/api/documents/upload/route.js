@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireDocumentAccess } from "../../../../lib/auth.js";
-import { emailService } from "../../../../lib/emailService.js";
-import { DocumentService, UserService } from "../../../../lib/firestore.js";
+import { requireAuth } from "../../../../lib/auth.js";
+import {
+  DocumentService,
+  UserService,
+} from "../../../../lib/services/index.js";
 
 // Helper function to get document collaborators for new documents
 async function getDocumentCollaborators(document) {
@@ -51,7 +53,7 @@ async function getDocumentCollaborators(document) {
 
 // POST - Save document metadata after client-side upload
 async function POST(request) {
-  return requireDocumentAccess(async (request) => {
+  return requireAuth(async (request) => {
     try {
       // Parse the request body (JSON, not form data)
       const body = await request.json();

@@ -1,8 +1,10 @@
+import { emailService } from "@/lib/emailService.js";
 import { NextResponse } from "next/server";
-import { requireDocumentAccess } from "../../../../lib/auth.js";
-import { emailService } from "../../../../lib/emailService.js";
-import { DocumentService, UserService } from "../../../../lib/firestore.js";
-
+import { requireAuth } from "../../../../lib/auth.js";
+import {
+  DocumentService,
+  UserService,
+} from "../../../../lib/services/index.js";
 // Helper function to get document collaborators for new documents
 async function getDocumentCollaborators(document) {
   const collaborators = [];
@@ -51,7 +53,7 @@ async function getDocumentCollaborators(document) {
 
 // POST - Upload document as string content
 async function POST(request) {
-  return requireDocumentAccess(async (request) => {
+  return requireAuth(async (request) => {
     try {
       const { name, content, folderId, tags = [] } = await request.json();
 

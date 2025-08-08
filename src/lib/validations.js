@@ -133,6 +133,7 @@ export function validateDocumentUpload(file) {
     "application/vnd.ms-powerpoint",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "text/plain",
+    "text/csv",
     "image/jpeg",
     "image/png",
     "image/gif",

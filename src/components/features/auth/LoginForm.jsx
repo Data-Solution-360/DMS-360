@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { validateLogin } from "../../../lib/validations";
-import { useAuth } from "../../../store";
+import { useAuth } from "../../../store/AuthContext"; // Updated import path
 
 export default function LoginForm() {
   const [formData, setFormData] = useState({
