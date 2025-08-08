@@ -1,10 +1,7 @@
+import { requireAuth } from "@/lib/auth.js";
 import { emailService } from "@/lib/emailService.js";
+import { DocumentService, UserService } from "@/lib/services/index.js";
 import { NextResponse } from "next/server";
-import { requireAuth } from "../../../../../lib/auth.js";
-import {
-  DocumentService,
-  UserService,
-} from "../../../../../lib/services/index.js";
 
 // Helper function to check document ownership
 async function checkDocumentOwnership(documentId, userId) {

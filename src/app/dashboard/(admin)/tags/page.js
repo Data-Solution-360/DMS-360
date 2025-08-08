@@ -1,6 +1,6 @@
 "use client";
 
-import { TagManager } from "../../../components/features";
+import { TagManager } from "@/components/features";
 
 export default function TagsPage() {
   return (

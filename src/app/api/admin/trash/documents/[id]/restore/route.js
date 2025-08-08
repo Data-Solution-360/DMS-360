@@ -1,7 +1,7 @@
+import { requireAuth } from "@/lib/auth.js";
+import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { requireAuth } from "../../../../../../lib/auth.js";
-import { adminDb } from "../../../../../../lib/firebase-admin.js";
 
 async function POST(request, { params }) {
   return requireAuth(async () => {
