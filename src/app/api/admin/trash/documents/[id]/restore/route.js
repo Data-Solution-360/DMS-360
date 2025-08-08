@@ -12,7 +12,7 @@ async function POST(request, { params }) {
       const trashDoc = await trashRef.get();
       if (!trashDoc.exists) {
         return NextResponse.json(
-          { success: false, error: "Trash item not found" },
+          { success: false, error: "Trash item is not found" },
           { status: 404 }
         );
       }
