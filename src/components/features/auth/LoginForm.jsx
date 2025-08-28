@@ -55,14 +55,31 @@ export default function LoginForm() {
       const result = await login(formData.email, formData.password);
 
       if (!result.success) {
-        setErrors({ general: result.error });
+        // Enhanced error handling with error codes
+        setErrors({
+          general: result.error,
+          code: result.code,
+          timestamp: result.timestamp,
+        });
+
+        // Log error details for debugging
+        console.error("Login failed:", {
+          error: result.error,
+          code: result.code,
+          timestamp: result.timestamp,
+        });
       } else {
         // The AuthContext should handle the redirect automatically
         router.push("/dashboard");
       }
     } catch (error) {
       console.error("Login error:", error);
-      setErrors({ general: "Login failed. Please try again." });
+      setErrors({
+        general:
+          "An unexpected error occurred. Please try again or contact support if the issue persists.",
+        code: "UNEXPECTED_ERROR",
+        timestamp: new Date().toISOString(),
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -127,9 +144,11 @@ export default function LoginForm() {
           >
             {errors.general && (
               <div className="bg-red-500/20 border border-red-500/30 text-red-300 px-3 py-2 sm:px-4 sm:py-3 rounded-xl backdrop-blur-sm text-sm">
-                <div className="flex items-center">
-                  <span className="text-red-400 mr-2">⚠️</span>
-                  {errors.general}
+                <div className="flex items-start">
+                  <span className="text-red-400 mr-2 mt-0.5">⚠️</span>
+                  <div className="flex-1">
+                    <div className="font-medium">{errors.general}</div>
+                  </div>
                 </div>
               </div>
             )}

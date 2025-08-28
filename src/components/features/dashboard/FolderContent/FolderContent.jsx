@@ -41,7 +41,7 @@ const getFileIcon = (mimeType) => {
 };
 
 export default function FolderContent({ currentFolder, onFolderNavigation }) {
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState("table");
   const [filterType, setFilterType] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showUploadModal, setShowUploadModal] = useState(false);

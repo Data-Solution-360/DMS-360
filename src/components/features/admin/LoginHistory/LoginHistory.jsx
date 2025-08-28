@@ -23,7 +23,6 @@ import {
   FiUser,
 } from "react-icons/fi";
 import { useApi } from "../../../../hooks/useApi";
-import { calculateSessionDuration } from "../../../../lib/utils/browserUtils.js";
 
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -228,31 +227,38 @@ export default function LoginHistory() {
         </Space>
       ),
     },
-    {
-      title: "Session Duration",
-      key: "sessionDuration",
-      render: (_, record) => {
-        // Use the new session duration calculation with session ID
-        const duration = calculateSessionDuration(
-          record.loginAt, 
-          record.logoutAt, 
-          record.sessionId
-        );
-        
-        // Show session status
-        const statusColor = record.sessionStatus === 'active' ? 'green' : 
-                           record.sessionStatus === 'ended' ? 'blue' : 'orange';
-        const statusText = record.sessionStatus === 'active' ? 'Active' :
-                          record.sessionStatus === 'ended' ? 'Ended' : 'Expired';
-        
-        return (
-          <Space direction="vertical" size="small">
-            <Tag color="green">{duration}</Tag>
-            <Tag color={statusColor}>{statusText}</Tag>
-          </Space>
-        );
-      },
-    },
+    // {
+    //   title: "Session Duration",
+    //   key: "sessionDuration",
+    //   render: (_, record) => {
+    //     const duration = calculateSessionDuration(
+    //       record.loginAt,
+    //       record.logoutAt,
+    //       record.sessionId
+    //     );
+
+    //     // Show session status
+    //     const statusColor =
+    //       record.sessionStatus === "active"
+    //         ? "green"
+    //         : record.sessionStatus === "ended"
+    //         ? "blue"
+    //         : "orange";
+    //     const statusText =
+    //       record.sessionStatus === "active"
+    //         ? "Active"
+    //         : record.sessionStatus === "ended"
+    //         ? "Ended"
+    //         : "Expired";
+
+    //     return (
+    //       <Space direction="vertical" size="small">
+    //         <Tag color="green">{duration}</Tag>
+    //         <Tag color={statusColor}>{statusText}</Tag>
+    //       </Space>
+    //     );
+    //   },
+    // },
     {
       title: "IP Address",
       dataIndex: "ipAddress",

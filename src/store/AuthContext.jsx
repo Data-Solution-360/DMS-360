@@ -1,6 +1,6 @@
 "use client";
 
-import React, {
+import {
   createContext,
   useCallback,
   useContext,
@@ -168,7 +168,7 @@ export function AuthProvider({ children }) {
               type: actionTypes.AUTH_STATE_CHANGED,
               payload: { user: data.user },
             });
-            
+
             // Initialize browser session tracking if session ID is available
             if (data.sessionId) {
               initializeBrowserSession(data.sessionId);
@@ -188,7 +188,7 @@ export function AuthProvider({ children }) {
                   type: actionTypes.AUTH_STATE_CHANGED,
                   payload: { user: retryData.user },
                 });
-                
+
                 // Initialize browser session tracking
                 if (retryData.sessionId) {
                   initializeBrowserSession(retryData.sessionId);
@@ -256,26 +256,106 @@ export function AuthProvider({ children }) {
       }
     } catch (error) {
       console.error("Login error:", error);
-      let errorMessage = "Login failed";
 
-      // Handle Firebase Auth errors
-      if (error.code === "auth/user-not-found") {
-        errorMessage = "No account found with this email";
-      } else if (error.code === "auth/wrong-password") {
-        errorMessage = "Incorrect password";
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address";
-      } else if (error.code === "auth/too-many-requests") {
-        errorMessage = "Too many failed login attempts. Please try again later";
-      } else if (error.message) {
-        errorMessage = error.message;
+      // Custom error handling - no Firebase error codes
+      let errorMessage = "Invalid email or password. Please try again.";
+      let errorCode = "LOGIN_FAILED";
+
+      // Analyze error patterns and provide custom messages
+      if (error.message) {
+        const errorLower = error.message.toLowerCase();
+
+        if (errorLower.includes("network") || errorLower.includes("fetch")) {
+          errorMessage =
+            "Network connection issue detected. Please check your internet connection and try again.";
+          errorCode = "NETWORK_ERROR";
+        } else if (
+          errorLower.includes("timeout") ||
+          errorLower.includes("timed out")
+        ) {
+          errorMessage =
+            "The login request timed out. Please try again or contact support if the issue persists.";
+          errorCode = "TIMEOUT_ERROR";
+        } else if (
+          errorLower.includes("quota") ||
+          errorLower.includes("limit")
+        ) {
+          errorMessage =
+            "System resources are currently limited. Please try again later or contact support.";
+          errorCode = "RESOURCE_LIMIT";
+        } else if (
+          errorLower.includes("permission") ||
+          errorLower.includes("unauthorized")
+        ) {
+          errorMessage =
+            "Access denied. You don't have permission to perform this action.";
+          errorCode = "PERMISSION_DENIED";
+        } else if (
+          errorLower.includes("invalid") &&
+          errorLower.includes("email")
+        ) {
+          errorMessage =
+            "The email address format is invalid. Please enter a valid email address.";
+          errorCode = "INVALID_EMAIL_FORMAT";
+        } else if (
+          errorLower.includes("user") &&
+          errorLower.includes("found")
+        ) {
+          errorMessage =
+            "No account found with this email address. Please check your email or create a new account.";
+          errorCode = "ACCOUNT_NOT_FOUND";
+        } else if (
+          errorLower.includes("password") ||
+          errorLower.includes("wrong")
+        ) {
+          errorMessage =
+            "The password you entered is incorrect. Please check your password and try again.";
+          errorCode = "INCORRECT_PASSWORD";
+        } else if (
+          errorLower.includes("too many") ||
+          errorLower.includes("requests")
+        ) {
+          errorMessage =
+            "Too many failed login attempts detected. Please wait a few minutes before trying again or reset your password.";
+          errorCode = "TOO_MANY_ATTEMPTS";
+        } else if (
+          errorLower.includes("disabled") ||
+          errorLower.includes("suspended")
+        ) {
+          errorMessage =
+            "This account has been temporarily disabled. Please contact support for assistance.";
+          errorCode = "ACCOUNT_DISABLED";
+        } else if (
+          errorLower.includes("email") &&
+          errorLower.includes("verified")
+        ) {
+          errorMessage =
+            "Please verify your email address before logging in. Check your inbox for a verification link.";
+          errorCode = "EMAIL_NOT_VERIFIED";
+        } else if (
+          errorLower.includes("maintenance") ||
+          errorLower.includes("unavailable")
+        ) {
+          errorMessage =
+            "The system is currently under maintenance. Please try again later or contact support.";
+          errorCode = "SYSTEM_MAINTENANCE";
+        }
       }
 
       dispatch({
         type: actionTypes.LOGIN_ERROR,
-        payload: { error: errorMessage },
+        payload: {
+          error: errorMessage,
+          code: errorCode,
+          timestamp: new Date().toISOString(),
+        },
       });
-      return { success: false, error: errorMessage };
+      return {
+        success: false,
+        error: errorMessage,
+        code: errorCode,
+        timestamp: new Date().toISOString(),
+      };
     } finally {
       dispatch({ type: actionTypes.SET_LOADING, payload: false });
     }
@@ -342,24 +422,84 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error("Registration error:", error);
 
-      let errorMessage = "Registration failed";
+      let errorMessage =
+        "An unexpected error occurred during registration. Please try again.";
+      let errorCode = "REGISTRATION_FAILED";
 
-      // Handle Firebase Auth errors
-      if (error.code === "auth/email-already-in-use") {
-        errorMessage = "An account with this email already exists";
-      } else if (error.code === "auth/weak-password") {
-        errorMessage = "Password should be at least 6 characters";
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address";
-      } else if (error.message) {
-        errorMessage = error.message;
+      // Custom error handling - no Firebase error codes
+      if (error.message) {
+        const errorLower = error.message.toLowerCase();
+
+        if (errorLower.includes("network") || errorLower.includes("fetch")) {
+          errorMessage =
+            "Network connection issue detected. Please check your internet connection and try again.";
+          errorCode = "NETWORK_ERROR";
+        } else if (
+          errorLower.includes("timeout") ||
+          errorLower.includes("timed out")
+        ) {
+          errorMessage =
+            "The registration request timed out. Please try again or contact support if the issue persists.";
+          errorCode = "TIMEOUT_ERROR";
+        } else if (
+          errorLower.includes("quota") ||
+          errorLower.includes("limit")
+        ) {
+          errorMessage =
+            "System resources are currently limited. Please try again later or contact support.";
+          errorCode = "RESOURCE_LIMIT";
+        } else if (
+          errorLower.includes("email") &&
+          errorLower.includes("already")
+        ) {
+          errorMessage =
+            "An account with this email address already exists. Please use a different email or try logging in instead.";
+          errorCode = "EMAIL_ALREADY_EXISTS";
+        } else if (
+          errorLower.includes("weak") ||
+          errorLower.includes("password")
+        ) {
+          errorMessage =
+            "The password you entered is too weak. Please choose a stronger password with at least 8 characters, including uppercase, lowercase, numbers, and special characters.";
+          errorCode = "WEAK_PASSWORD";
+        } else if (
+          errorLower.includes("invalid") &&
+          errorLower.includes("email")
+        ) {
+          errorMessage =
+            "The email address format is invalid. Please enter a valid email address.";
+          errorCode = "INVALID_EMAIL_FORMAT";
+        } else if (
+          errorLower.includes("name") &&
+          errorLower.includes("required")
+        ) {
+          errorMessage =
+            "Please provide your full name to complete the registration.";
+          errorCode = "NAME_REQUIRED";
+        } else if (
+          errorLower.includes("maintenance") ||
+          errorLower.includes("unavailable")
+        ) {
+          errorMessage =
+            "The system is currently under maintenance. Please try again later or contact support.";
+          errorCode = "SYSTEM_MAINTENANCE";
+        }
       }
 
       dispatch({
         type: actionTypes.REGISTER_ERROR,
-        payload: { error: errorMessage },
+        payload: {
+          error: errorMessage,
+          code: errorCode,
+          timestamp: new Date().toISOString(),
+        },
       });
-      return { success: false, error: errorMessage };
+      return {
+        success: false,
+        error: errorMessage,
+        code: errorCode,
+        timestamp: new Date().toISOString(),
+      };
     } finally {
       dispatch({ type: actionTypes.SET_LOADING, payload: false });
     }

@@ -38,18 +38,18 @@ async function POST(request) {
         // User doesn't exist, continue with creation
       }
 
-      // Create user in Firebase Auth
+      // Create user in Firebase Auth - default to enabled (status true)
       const userRecord = await adminAuth.createUser({
         email: email.toLowerCase(),
         password: password,
         displayName: name,
-        disabled: !status, // Disable user if status is false
+        disabled: false, // Always create as enabled by default
       });
 
       // Generate unique 6-digit UID for internal reference
       const customUid = Math.floor(100000 + Math.random() * 900000).toString();
 
-      // Create user document in Firestore
+      // Create user document in Firestore - default to enabled
       const userData = {
         uid: customUid,
         firebaseUid: userRecord.uid,
@@ -58,7 +58,7 @@ async function POST(request) {
         role: role,
         password: password,
         mobile: mobile || "",
-        status: status,
+        status: true, // Always create as enabled by default
         hasDocumentAccess: role === "admin" || role === "manager",
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),

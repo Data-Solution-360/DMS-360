@@ -101,11 +101,11 @@ export default function UserTrashbox() {
 
   const deletePermanently = async (item) => {
     const confirm = await Swal.fire({
-      title: "🗑️ Permanently delete?",
-      text: "This will delete the user from both trash and users collection. This action cannot be undone.",
+      title: "🗑️ Permanently Delete User?",
+      text: "This will completely remove the user from both the trash and Firebase Authentication. This action cannot be undone and the user will lose all access to the system.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, delete permanently",
+      confirmButtonText: "Yes, Delete Permanently",
       cancelButtonText: "Cancel",
       confirmButtonColor: "#ef4444",
       cancelButtonColor: "#6b7280",
@@ -117,36 +117,46 @@ export default function UserTrashbox() {
     if (!confirm.isConfirmed) return;
 
     setActionId(item.id);
-    setActionType("delete"); // Add this line
+    setActionType("delete");
     try {
       const res = await apiCall(`/api/admin/trash/users/${item.id}`, {
         method: "DELETE",
       });
       if (res.success) {
         Swal.fire({
-          title: "✅ Deleted",
-          text: "User has been permanently deleted.",
+          title: "✅ User Completely Removed",
+          text: "User has been permanently deleted from both the trash and Firebase Authentication. This action cannot be undone.",
           icon: "success",
-          timer: 1500,
+          timer: 2000,
           showConfirmButton: false,
         });
         fetchItems();
       } else {
         Swal.fire({
-          title: "❌ Delete failed",
-          text: res.error || "Failed to permanently delete user",
+          title: "❌ Delete Failed",
+          text:
+            res.error || "Failed to permanently delete user. Please try again.",
           icon: "error",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#ef4444",
+          background: "#ffffff",
+          color: "#1f2937",
         });
       }
     } catch (e) {
+      console.error("Error permanently deleting user:", e);
       Swal.fire({
         title: "❌ Error",
-        text: e.message || "Failed to permanently delete user",
+        text: "An unexpected error occurred while deleting the user. Please try again or contact support.",
         icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#ef4444",
+        background: "#ffffff",
+        color: "#1f2937",
       });
     } finally {
       setActionId(null);
-      setActionType(null); // Add this line
+      setActionType(null);
     }
   };
 

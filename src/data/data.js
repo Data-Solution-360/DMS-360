@@ -4,13 +4,10 @@ import {
   BookOpen,
   Database,
   Download,
-  Eye,
   FileText,
   Folder,
   FolderOpen,
-  Lock,
   Search,
-  Settings,
   Settings2,
   Shield,
   Trash2,
@@ -78,12 +75,7 @@ export const linksAdmin = [
         icon: <Search />,
         role: ["admin", "teacher"],
       },
-      {
-        name: "Search History",
-        link: "/dashboard/documents/search-history",
-        icon: <Database />,
-        role: ["admin"],
-      },
+
       {
         name: "Saved Searches",
         link: "/dashboard/documents/saved-searches",
@@ -122,18 +114,18 @@ export const linksAdmin = [
     type: "collapsible",
     icon: <Settings2 />,
     links: [
-      {
-        name: "General Settings",
-        link: "/dashboard/settings/general",
-        icon: <Settings />,
-        role: ["admin"],
-      },
-      {
-        name: "Company Profile",
-        link: "/dashboard/settings/profile",
-        icon: <Eye />,
-        role: ["admin"],
-      },
+      // {
+      //   name: "General Settings",
+      //   link: "/dashboard/settings/general",
+      //   icon: <Settings />,
+      //   role: ["admin"],
+      // },
+      // {
+      //   name: "Company Profile",
+      //   link: "/dashboard/settings/profile",
+      //   icon: <Eye />,
+      //   role: ["admin"],
+      // },
       {
         name: "System Configuration",
         link: "/dashboard/settings/system",
@@ -168,30 +160,30 @@ export const linksAdmin = [
       },
     ],
   },
-  {
-    id: 10,
-    title: "Permission",
-    type: "collapsible",
-    icon: <Lock />,
-    links: [
-      {
-        name: "Role Management",
-        link: "/dashboard/permissions/roles",
-        icon: <Shield />,
-        role: ["admin"],
-      },
-      {
-        name: "Access Control",
-        link: "/dashboard/permissions/access",
-        icon: <Lock />,
-        role: ["admin"],
-      },
-      {
-        name: "Permission Groups",
-        link: "/dashboard/permissions/groups",
-        icon: <Users />,
-        role: ["admin"],
-      },
-    ],
-  },
+  // {
+  //   id: 10,
+  //   title: "Permission",
+  //   type: "collapsible",
+  //   icon: <Lock />,
+  //   links: [
+  //     {
+  //       name: "Role Management",
+  //       link: "/dashboard/permissions/roles",
+  //       icon: <Shield />,
+  //       role: ["admin"],
+  //     },
+  //     {
+  //       name: "Access Control",
+  //       link: "/dashboard/permissions/access",
+  //       icon: <Lock />,
+  //       role: ["admin"],
+  //     },
+  //     {
+  //       name: "Permission Groups",
+  //       link: "/dashboard/permissions/groups",
+  //       icon: <Users />,
+  //       role: ["admin"],
+  //     },
+  //   ],
+  // },
 ];
