@@ -1,5 +1,4 @@
 import {
-  Activity,
   BarChart3,
   BookOpen,
   Database,
@@ -55,14 +54,14 @@ export const linksAdmin = [
       },
     ],
   },
-  {
-    id: 3,
-    title: "User Usage",
-    type: "single",
-    link: "/dashboard/user-usage",
-    icon: <Activity />,
-    role: ["admin"],
-  },
+  // {
+  //   id: 3,
+  //   title: "User Usage",
+  //   type: "single",
+  //   link: "/dashboard/user-usage",
+  //   icon: <Activity />,
+  //   role: ["admin"],
+  // },
   {
     id: 4,
     title: "Document Search",
